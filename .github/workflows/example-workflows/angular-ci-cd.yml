@@ -1,0 +1,89 @@
+name: Angular App CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Lint and test in parallel
+  quality-checks:
+    uses: ./.github/templates/ci/nodejs-ci.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      run-tests: true
+      run-lint: true
+      run-build: false
+      test-command: 'npm run test:ci'
+      lint-command: 'npm run lint'
+
+  # Run e2e tests
+  e2e-tests:
+    uses: ./.github/templates/ci/nodejs-ci.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      run-tests: true
+      run-lint: false
+      run-build: false
+      test-command: 'npm run e2e:ci'
+
+  # Build for different environments
+  build-dev:
+    if: github.ref == 'refs/heads/develop'
+    needs: [quality-checks]
+    uses: ./.github/templates/build/nodejs-build.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      build-command: 'npm run build:dev'
+      build-output-dir: 'dist'
+      artifact-name: 'angular-dev-build'
+      build-env: '{"NODE_ENV": "development"}'
+
+  build-prod:
+    if: github.ref == 'refs/heads/main'
+    needs: [quality-checks, e2e-tests]
+    uses: ./.github/templates/build/nodejs-build.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      build-command: 'npm run build:prod'
+      build-output-dir: 'dist'
+      artifact-name: 'angular-prod-build'
+      build-env: '{"NODE_ENV": "production"}'
+
+  # Deploy to different environments
+  deploy-dev:
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    needs: [build-dev]
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: angular-dev-build
+          path: ./dist
+
+      - name: Deploy to development
+        run: |
+          echo "Deploying Angular app to development environment"
+          # Add your deployment logic here
+
+  # Release production version
+  release:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [build-prod]
+    uses: ./.github/templates/release/nodejs-release.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      release-type: 'semantic'
+      github-release: true
+      npm-publish: false
+      build-before-release: false  # Already built in previous job
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

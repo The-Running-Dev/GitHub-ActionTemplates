@@ -1,0 +1,51 @@
+name: 'Cache Dependencies'
+description: 'Reusable template for caching package manager dependencies'
+
+inputs:
+  cache-key:
+    description: 'Custom cache key prefix'
+    required: false
+    default: 'deps'
+  package-manager:
+    description: 'Package manager (npm, yarn, pnpm)'
+    required: false
+    default: 'npm'
+  working-directory:
+    description: 'Working directory for dependency caching'
+    required: false
+    default: '.'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Get package manager cache directory
+      id: cache-dir
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        case "${{ inputs.package-manager }}" in
+          "npm")
+            echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+            echo "lockfile=package-lock.json" >> $GITHUB_OUTPUT
+            ;;
+          "yarn")
+            echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+            echo "lockfile=yarn.lock" >> $GITHUB_OUTPUT
+            ;;
+          "pnpm")
+            echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+            echo "lockfile=pnpm-lock.yaml" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+            echo "lockfile=package-lock.json" >> $GITHUB_OUTPUT
+            ;;
+        esac
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.cache-dir.outputs.dir }}
+        key: ${{ inputs.cache-key }}-${{ runner.os }}-${{ inputs.package-manager }}-${{ hashFiles(format('{0}/{1}', inputs.working-directory, steps.cache-dir.outputs.lockfile)) }}
+        restore-keys: |
+          ${{ inputs.cache-key }}-${{ runner.os }}-${{ inputs.package-manager }}-

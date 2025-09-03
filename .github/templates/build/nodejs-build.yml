@@ -1,0 +1,85 @@
+name: NodeJS Build Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        type: string
+        default: '18'
+      package-manager:
+        description: 'Package manager (npm, yarn, pnpm)'
+        type: string
+        default: 'npm'
+      working-directory:
+        description: 'Working directory'
+        type: string
+        default: '.'
+      build-command:
+        description: 'Build command'
+        type: string
+        default: 'npm run build'
+      build-output-dir:
+        description: 'Build output directory'
+        type: string
+        default: 'dist'
+      artifact-name:
+        description: 'Name for build artifacts'
+        type: string
+        default: 'build-artifacts'
+      run-pre-build:
+        description: 'Whether to run pre-build steps'
+        type: boolean
+        default: false
+      pre-build-command:
+        description: 'Pre-build command'
+        type: string
+        default: 'npm run prebuild'
+      build-env:
+        description: 'Build environment variables (JSON object)'
+        type: string
+        default: '{}'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: ./.github/templates/sub-templates/setup-node
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Set build environment variables
+        run: |
+          echo '${{ inputs.build-env }}' | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
+
+      - name: Run pre-build steps
+        if: ${{ inputs.run-pre-build }}
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.pre-build-command }}
+
+      - name: Build project
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.build-command }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ format('{0}/{1}', inputs.working-directory, inputs.build-output-dir) }}
+          retention-days: 30
+
+      - name: Build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Node.js version: ${{ inputs.node-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Package manager: ${{ inputs.package-manager }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build command: ${{ inputs.build-command }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Output directory: ${{ inputs.build-output-dir }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Artifact name: ${{ inputs.artifact-name }}" >> $GITHUB_STEP_SUMMARY

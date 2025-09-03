@@ -1,0 +1,78 @@
+name: React App CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Lint check
+  lint:
+    uses: ./.github/templates/ci/lint.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      eslint-command: 'npm run lint'
+      prettier-command: 'npm run format:check'
+      run-type-check: true
+      type-check-command: 'npm run type-check'
+
+  # Run tests with coverage
+  test:
+    uses: ./.github/templates/test/coverage.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      test-command: 'npm run test:coverage'
+      coverage-path: 'coverage'
+      upload-codecov: true
+      min-coverage: 80
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Build the application
+  build:
+    needs: [lint, test]
+    uses: ./.github/templates/build/nodejs-build.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      build-command: 'npm run build'
+      build-output-dir: 'build'
+      artifact-name: 'react-build'
+      build-env: '{"REACT_APP_ENV": "production", "NODE_ENV": "production"}'
+
+  # Deploy to staging (on develop branch)
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: react-build
+          path: ./build
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying React app to staging environment"
+          # Add your deployment logic here
+
+  # Release (on main branch)
+  release:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [build]
+    uses: ./.github/templates/release/nodejs-release.yml
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      release-type: 'semantic'
+      github-release: true
+      npm-publish: false
+      build-before-release: true
+      build-command: 'npm run build'
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
