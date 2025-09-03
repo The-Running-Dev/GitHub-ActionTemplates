@@ -20,7 +20,7 @@ on: [push, pull_request]
 
 jobs:
   ci:
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -35,7 +35,7 @@ on: [pull_request]
 
 jobs:
   lint:
-    uses: ./.github/templates/ci/lint.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/lint.yml@main
     with:
       node-version: '18'
       run-prettier: true
@@ -51,7 +51,7 @@ on: [push]
 
 jobs:
   test:
-    uses: ./.github/templates/test/coverage.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/test/coverage.yml@main
     with:
       upload-codecov: true
     secrets:
@@ -59,7 +59,7 @@ jobs:
   
   build:
     needs: [test]
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       build-output-dir: 'dist'
 ```
@@ -80,7 +80,7 @@ on:
 jobs:
   # Quality gates
   quality:
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       node-version: '18'
       run-tests: true
@@ -104,7 +104,7 @@ jobs:
             build-command: 'npm run build:prod'
             node-env: 'production'
     
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       build-command: ${{ matrix.build-command }}
       artifact-name: 'build-${{ matrix.environment }}'
@@ -159,7 +159,7 @@ jobs:
   frontend:
     if: needs.changes.outputs.frontend == 'true'
     needs: changes
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       working-directory: 'packages/frontend'
       node-version: '18'
@@ -169,7 +169,7 @@ jobs:
   backend:
     if: needs.changes.outputs.backend == 'true'
     needs: changes
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       working-directory: 'packages/backend'
       node-version: '18'
@@ -180,7 +180,7 @@ jobs:
   docs:
     if: needs.changes.outputs.docs == 'true'
     needs: changes
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       working-directory: 'docs'
       build-command: 'npm run build'
@@ -195,7 +195,7 @@ jobs:
 # Using Yarn
 jobs:
   ci:
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       package-manager: 'yarn'
       test-command: 'yarn test'
@@ -205,7 +205,7 @@ jobs:
 # Using pnpm
 jobs:
   ci:
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       package-manager: 'pnpm'
       test-command: 'pnpm test'
@@ -223,7 +223,7 @@ jobs:
         node-version: ['16', '18', '20']
         os: [ubuntu-latest, windows-latest, macos-latest]
     
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       node-version: ${{ matrix.node-version }}
 ```
@@ -233,7 +233,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       run-tests: ${{ github.event_name == 'pull_request' }}
       run-build: ${{ github.ref == 'refs/heads/main' }}
@@ -245,7 +245,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       build-env: |
         {
@@ -261,18 +261,18 @@ jobs:
 
 | Template | Purpose | Key Inputs |
 |----------|---------|------------|
-| `ci/nodejs-ci.yml` | Complete CI pipeline | `node-version`, `package-manager`, `run-tests`, `run-lint`, `run-build` |
-| `ci/lint.yml` | Linting only | `eslint-command`, `prettier-command`, `run-type-check` |
-| `test/coverage.yml` | Test with coverage | `test-command`, `upload-codecov`, `min-coverage` |
-| `build/nodejs-build.yml` | Build artifacts | `build-command`, `build-output-dir`, `artifact-name` |
-| `release/nodejs-release.yml` | Release management | `release-type`, `npm-publish`, `github-release` |
+| `templates/ci/nodejs-ci.yml` | Complete CI pipeline | `node-version`, `package-manager`, `run-tests`, `run-lint`, `run-build` |
+| `templates/ci/lint.yml` | Linting only | `eslint-command`, `prettier-command`, `run-type-check` |
+| `templates/test/coverage.yml` | Test with coverage | `test-command`, `upload-codecov`, `min-coverage` |
+| `templates/build/nodejs-build.yml` | Build artifacts | `build-command`, `build-output-dir`, `artifact-name` |
+| `templates/release/nodejs-release.yml` | Release management | `release-type`, `npm-publish`, `github-release` |
 
 ### Sub-Templates
 
 | Sub-Template | Purpose | Key Inputs |
 |--------------|---------|------------|
-| `sub-templates/setup-node.yml` | Node.js setup with caching | `node-version`, `cache`, `working-directory` |
-| `sub-templates/cache-deps.yml` | Dependency caching | `package-manager`, `cache-key` |
+| `templates/sub-templates/setup-node.yml` | Node.js setup with caching | `node-version`, `cache`, `working-directory` |
+| `templates/sub-templates/cache-deps.yml` | Dependency caching | `package-manager`, `cache-key` |
 
 ### Common Input Patterns
 
@@ -321,7 +321,7 @@ build-env: |     # Multiple variables
 ### 1. Use Semantic Versioning
 ```yaml
 release:
-  uses: ./.github/templates/release/nodejs-release.yml
+  uses: The-Running-Dev/GitHub-ActionTemplates/templates/release/nodejs-release.yml@main
   with:
     release-type: 'semantic'
 ```
@@ -330,24 +330,27 @@ release:
 ```yaml
 jobs:
   quality-gate:
-    uses: ./.github/templates/ci/lint.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/lint.yml@main
   
   test:
     needs: [quality-gate]
-    uses: ./.github/templates/test/coverage.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/test/coverage.yml@main
+  
+  test:
+    needs: [quality-gate]
     with:
       min-coverage: 80
   
   build:
     needs: [test]
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
 ```
 
 ### 3. Cache Dependencies
 Templates automatically handle caching, but you can customize:
 ```yaml
 # Automatic caching based on package manager
-uses: ./.github/templates/sub-templates/setup-node.yml
+uses: The-Running-Dev/GitHub-ActionTemplates/templates/sub-templates/setup-node.yml@main
 with:
   cache: 'npm'  # or 'yarn', 'pnpm'
 ```
@@ -356,14 +359,20 @@ with:
 ```yaml
 jobs:
   lint:
-    uses: ./.github/templates/ci/lint.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/lint.yml@main
+  
+  test:
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/test/coverage.yml@main
+  
+  build:
+    needs: [lint, test]  # Both must pass before building
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
   
   test:
     uses: ./.github/templates/test/coverage.yml
   
   build:
     needs: [lint, test]  # Both must pass before building
-    uses: ./.github/templates/build/nodejs-build.yml
 ```
 
 ### 5. Environment-Specific Configurations
@@ -371,14 +380,14 @@ jobs:
 jobs:
   build-prod:
     if: github.ref == 'refs/heads/main'
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       build-command: 'npm run build:prod'
       build-env: '{"NODE_ENV": "production"}'
   
   build-dev:
     if: github.ref == 'refs/heads/develop'
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       build-command: 'npm run build:dev'
       build-env: '{"NODE_ENV": "development"}'

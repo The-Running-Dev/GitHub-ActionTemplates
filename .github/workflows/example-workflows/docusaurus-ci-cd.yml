@@ -9,7 +9,7 @@ on:
 jobs:
   # Lint and validate documentation
   lint:
-    uses: ./.github/templates/ci/lint.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/lint.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -20,7 +20,7 @@ jobs:
   # Build Docusaurus site
   build:
     needs: [lint]
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -91,7 +91,7 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [deploy]
-    uses: ./.github/templates/release/nodejs-release.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/release/nodejs-release.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'

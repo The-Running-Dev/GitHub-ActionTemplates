@@ -9,7 +9,7 @@ on:
 jobs:
   # Lint and test in parallel
   quality-checks:
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -21,7 +21,7 @@ jobs:
 
   # Run e2e tests
   e2e-tests:
-    uses: ./.github/templates/ci/nodejs-ci.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -34,7 +34,7 @@ jobs:
   build-dev:
     if: github.ref == 'refs/heads/develop'
     needs: [quality-checks]
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -46,7 +46,7 @@ jobs:
   build-prod:
     if: github.ref == 'refs/heads/main'
     needs: [quality-checks, e2e-tests]
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -77,7 +77,7 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [build-prod]
-    uses: ./.github/templates/release/nodejs-release.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/release/nodejs-release.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'

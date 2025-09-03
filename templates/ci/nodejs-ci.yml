@@ -1,0 +1,96 @@
+name: NodeJS CI Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        type: string
+        default: '18'
+      node-version-file:
+        description: 'File containing Node.js version'
+        type: string
+        default: ''
+      package-manager:
+        description: 'Package manager (npm, yarn, pnpm)'
+        type: string
+        default: 'npm'
+      working-directory:
+        description: 'Working directory'
+        type: string
+        default: '.'
+      run-tests:
+        description: 'Whether to run tests'
+        type: boolean
+        default: true
+      run-lint:
+        description: 'Whether to run linting'
+        type: boolean
+        default: true
+      run-build:
+        description: 'Whether to run build'
+        type: boolean
+        default: true
+      test-command:
+        description: 'Custom test command'
+        type: string
+        default: 'npm test'
+      lint-command:
+        description: 'Custom lint command'
+        type: string
+        default: 'npm run lint'
+      build-command:
+        description: 'Custom build command'
+        type: string
+        default: 'npm run build'
+      artifact-name:
+        description: 'Name for build artifacts'
+        type: string
+        default: 'build-artifacts'
+      artifact-path:
+        description: 'Path to build artifacts'
+        type: string
+        default: 'dist/'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: ${{ fromJSON(format('["{0}"]', inputs.node-version)) }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: ./templates/sub-templates/setup-node
+        with:
+          node-version: ${{ matrix.node-version }}
+          node-version-file: ${{ inputs.node-version-file }}
+          cache: ${{ inputs.package-manager }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Run linting
+        if: ${{ inputs.run-lint }}
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.lint-command }}
+
+      - name: Run tests
+        if: ${{ inputs.run-tests }}
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.test-command }}
+
+      - name: Run build
+        if: ${{ inputs.run-build }}
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.build-command }}
+
+      - name: Upload build artifacts
+        if: ${{ inputs.run-build && inputs.artifact-path }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ format('{0}/{1}', inputs.working-directory, inputs.artifact-path) }}
+          retention-days: 7

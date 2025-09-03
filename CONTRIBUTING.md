@@ -43,24 +43,28 @@ When adding new content, follow this structure:
 
 ```
 GitHub-ActionTemplates/
+├── templates/                    # Primary template location (NEW!)
+│   ├── [category]/              # e.g., ci, build, deploy, test
+│   │   └── [template].yml       # Reusable workflow template
+│   └── sub-templates/           # Composite actions
+│       └── [action].yml         # Reusable composite action
 ├── .github/
-│   ├── templates/
-│   │   ├── [category]/           # e.g., ci, build, deploy, test
-│   │   │   └── [template].yml    # Reusable workflow template
-│   │   └── sub-templates/        # Composite actions
-│   │       └── [action].yml      # Reusable composite action
+│   ├── templates/               # Legacy location (maintained for compatibility)
+│   │   ├── [category]/          # e.g., ci, build, deploy, test
+│   │   │   └── [template].yml   # Reusable workflow template
+│   │   └── sub-templates/       # Composite actions
+│   │       └── [action].yml     # Reusable composite action
 │   └── workflows/
-│       └── example-workflows/    # Complete workflow examples
-│           └── [framework].yml   # e.g., react-ci-cd.yml
+│       └── example-workflows/   # Complete workflow examples
+│           └── [framework].yml  # e.g., react-ci-cd.yml
 └── docs/
-    └── [guide].md               # Documentation files
-```
+    └── [guide].md              # Documentation files
 
 ## ✅ Template Guidelines
 
 ### Reusable Workflow Templates
 
-1. **File Location**: Place in `.github/templates/[category]/`
+1. **File Location**: Place in `templates/[category]/` (new preferred location) and `.github/templates/[category]/` (legacy compatibility)
 2. **Naming**: Use descriptive names like `nodejs-ci.yml`, `python-test.yml`
 3. **Structure**: Must use `workflow_call` trigger
 4. **Inputs**: Define all configurable parameters with sensible defaults
@@ -98,7 +102,7 @@ jobs:
 
 ### Composite Actions (Sub-Templates)
 
-1. **File Location**: Place in `.github/templates/sub-templates/`
+1. **File Location**: Place in `templates/sub-templates/` (new preferred location) and `.github/templates/sub-templates/` (legacy compatibility)
 2. **Purpose**: Reusable steps that can be composed into workflows
 3. **Structure**: Must use `composite` action type
 4. **Naming**: Use verb-noun format like `setup-python.yml`

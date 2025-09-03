@@ -9,7 +9,7 @@ on:
 jobs:
   # Lint check
   lint:
-    uses: ./.github/templates/ci/lint.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/lint.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -20,7 +20,7 @@ jobs:
 
   # Run tests with coverage
   test:
-    uses: ./.github/templates/test/coverage.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/test/coverage.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -34,7 +34,7 @@ jobs:
   # Build the application
   build:
     needs: [lint, test]
-    uses: ./.github/templates/build/nodejs-build.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -65,7 +65,7 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [build]
-    uses: ./.github/templates/release/nodejs-release.yml
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/release/nodejs-release.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'

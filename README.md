@@ -21,13 +21,20 @@ This repository provides flexible and composable GitHub Actions templates that e
 ```
 GitHub-ActionTemplates/
 ├── README.md                               # This file
-├── .github/
-│   ├── workflows/
-│   │   └── example-workflows/              # Example workflows using templates
-│   │       ├── react-ci-cd.yml            # React app pipeline
-│   │       ├── angular-ci-cd.yml          # Angular app pipeline
-│   │       └── docusaurus-ci-cd.yml       # Docusaurus site pipeline
-│   └── templates/
+├── templates/                              # Root-level templates (NEW!)
+│   ├── ci/
+│   │   ├── nodejs-ci.yml                  # Complete NodeJS CI pipeline
+│   │   └── lint.yml                       # Linting workflow
+│   ├── test/
+│   │   └── coverage.yml                   # Test coverage workflow
+│   ├── build/
+│   │   └── nodejs-build.yml               # Build artifacts workflow
+│   ├── release/
+│   │   └── nodejs-release.yml             # Release management workflow
+│   └── sub-templates/
+│       ├── setup-node.yml                 # Node.js environment setup
+│       └── cache-deps.yml                 # Dependency caching
+│   └── templates/                          # Legacy location (kept for compatibility)
 │       ├── ci/
 │       │   ├── nodejs-ci.yml              # Complete NodeJS CI pipeline
 │       │   └── lint.yml                   # Linting workflow
@@ -57,7 +64,7 @@ on: [push, pull_request]
 
 jobs:
   ci:
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/ci/nodejs-ci.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       node-version: '18'
       package-manager: 'npm'
@@ -77,13 +84,13 @@ on:
 jobs:
   # Quality checks
   lint:
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/ci/lint.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/lint.yml@main
     with:
       node-version: '18'
       run-type-check: true
 
   test:
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/test/coverage.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/test/coverage.yml@main
     with:
       upload-codecov: true
     secrets:
@@ -92,7 +99,7 @@ jobs:
   # Build
   build:
     needs: [lint, test]
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/build/nodejs-build.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       build-command: 'npm run build'
       artifact-name: 'production-build'
@@ -101,7 +108,7 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: [build]
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/release/nodejs-release.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/release/nodejs-release.yml@main
     with:
       release-type: 'semantic'
       github-release: true
@@ -115,18 +122,18 @@ jobs:
 
 | Template | Purpose | Use Case |
 |----------|---------|----------|
-| **`ci/nodejs-ci.yml`** | Complete CI pipeline | Full CI with lint, test, build |
-| **`ci/lint.yml`** | Code quality checks | ESLint, Prettier, TypeScript |
-| **`test/coverage.yml`** | Test execution with coverage | Unit tests, coverage reports |
-| **`build/nodejs-build.yml`** | Build artifacts | Production builds, Docker images |
-| **`release/nodejs-release.yml`** | Release management | Semantic releases, NPM publishing |
+| **`templates/ci/nodejs-ci.yml`** | Complete CI pipeline | Full CI with lint, test, build |
+| **`templates/ci/lint.yml`** | Code quality checks | ESLint, Prettier, TypeScript |
+| **`templates/test/coverage.yml`** | Test execution with coverage | Unit tests, coverage reports |
+| **`templates/build/nodejs-build.yml`** | Build artifacts | Production builds, Docker images |
+| **`templates/release/nodejs-release.yml`** | Release management | Semantic releases, NPM publishing |
 
 ### Sub-Templates (Composite Actions)
 
 | Sub-Template | Purpose | Use Case |
 |--------------|---------|----------|
-| **`sub-templates/setup-node.yml`** | Node.js environment setup | Standardized Node.js setup with caching |
-| **`sub-templates/cache-deps.yml`** | Dependency caching | Custom caching strategies |
+| **`templates/sub-templates/setup-node.yml`** | Node.js environment setup | Standardized Node.js setup with caching |
+| **`templates/sub-templates/cache-deps.yml`** | Dependency caching | Custom caching strategies |
 
 ## 🎯 Framework Examples
 
@@ -198,12 +205,12 @@ package-manager: 'pnpm'
 ```yaml
 jobs:
   frontend:
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/ci/nodejs-ci.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       working-directory: 'packages/frontend'
       
   backend:
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/ci/nodejs-ci.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       working-directory: 'packages/backend'
 ```
@@ -217,7 +224,7 @@ jobs:
       matrix:
         node-version: ['16', '18', '20']
         os: [ubuntu-latest, windows-latest]
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/ci/nodejs-ci.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/nodejs-ci.yml@main
     with:
       node-version: ${{ matrix.node-version }}
 ```
@@ -228,13 +235,13 @@ jobs:
 jobs:
   build-dev:
     if: github.ref == 'refs/heads/develop'
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/build/nodejs-build.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       build-command: 'npm run build:dev'
       
   build-prod:
     if: github.ref == 'refs/heads/main'
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/templates/build/nodejs-build.yml@main
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
     with:
       build-command: 'npm run build:prod'
 ```

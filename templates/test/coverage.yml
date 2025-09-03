@@ -1,0 +1,95 @@
+name: Test Coverage Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        type: string
+        default: '18'
+      package-manager:
+        description: 'Package manager (npm, yarn, pnpm)'
+        type: string
+        default: 'npm'
+      working-directory:
+        description: 'Working directory'
+        type: string
+        default: '.'
+      test-command:
+        description: 'Test command with coverage'
+        type: string
+        default: 'npm run test:coverage'
+      coverage-path:
+        description: 'Path to coverage reports'
+        type: string
+        default: 'coverage/'
+      coverage-format:
+        description: 'Coverage report format (lcov, cobertura, clover)'
+        type: string
+        default: 'lcov'
+      upload-codecov:
+        description: 'Whether to upload to Codecov'
+        type: boolean
+        default: false
+      upload-coveralls:
+        description: 'Whether to upload to Coveralls'
+        type: boolean
+        default: false
+      min-coverage:
+        description: 'Minimum coverage percentage'
+        type: number
+        default: 80
+    secrets:
+      CODECOV_TOKEN:
+        description: 'Codecov token'
+        required: false
+      COVERALLS_TOKEN:
+        description: 'Coveralls token'
+        required: false
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: ./templates/sub-templates/setup-node
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Run tests with coverage
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.test-command }}
+
+      - name: Upload coverage reports to Codecov
+        if: ${{ inputs.upload-codecov }}
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ${{ format('{0}/{1}', inputs.working-directory, inputs.coverage-path) }}
+          fail_ci_if_error: true
+
+      - name: Upload coverage reports to Coveralls
+        if: ${{ inputs.upload-coveralls }}
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: ${{ format('{0}/{1}/lcov.info', inputs.working-directory, inputs.coverage-path) }}
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: ${{ format('{0}/{1}', inputs.working-directory, inputs.coverage-path) }}
+          retention-days: 7
+
+      - name: Check coverage threshold
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo "Checking minimum coverage threshold of ${{ inputs.min-coverage }}%"
+          # This would typically be handled by your test framework's configuration
