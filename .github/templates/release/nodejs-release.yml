@@ -1,0 +1,136 @@
+name: NodeJS Release Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version to use'
+        type: string
+        default: '18'
+      package-manager:
+        description: 'Package manager (npm, yarn, pnpm)'
+        type: string
+        default: 'npm'
+      working-directory:
+        description: 'Working directory'
+        type: string
+        default: '.'
+      release-type:
+        description: 'Release type (semantic, manual)'
+        type: string
+        default: 'semantic'
+      npm-publish:
+        description: 'Whether to publish to NPM'
+        type: boolean
+        default: false
+      github-release:
+        description: 'Whether to create GitHub release'
+        type: boolean
+        default: true
+      build-before-release:
+        description: 'Whether to build before release'
+        type: boolean
+        default: true
+      build-command:
+        description: 'Build command'
+        type: string
+        default: 'npm run build'
+      release-notes:
+        description: 'Custom release notes'
+        type: string
+        default: ''
+      pre-release:
+        description: 'Whether this is a pre-release'
+        type: boolean
+        default: false
+    secrets:
+      NPM_TOKEN:
+        description: 'NPM authentication token'
+        required: false
+      GITHUB_TOKEN:
+        description: 'GitHub token for releases'
+        required: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN || github.token }}
+
+      - name: Setup Node.js environment
+        uses: ./.github/templates/sub-templates/setup-node
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Build project
+        if: ${{ inputs.build-before-release }}
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.build-command }}
+
+      - name: Setup NPM authentication
+        if: ${{ inputs.npm-publish }}
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+
+      - name: Semantic Release
+        if: ${{ inputs.release-type == 'semantic' }}
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if ! command -v semantic-release &> /dev/null; then
+            npm install -g semantic-release @semantic-release/changelog @semantic-release/git
+          fi
+          semantic-release
+
+      - name: Get package version
+        id: version
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: ${{ inputs.github-release && inputs.release-type == 'manual' }}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          release_name: Release ${{ steps.version.outputs.tag }}
+          body: ${{ inputs.release-notes || format('Release version {0}', steps.version.outputs.version) }}
+          draft: false
+          prerelease: ${{ inputs.pre-release }}
+
+      - name: Publish to NPM
+        if: ${{ inputs.npm-publish && inputs.release-type == 'manual' }}
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          if [ "${{ inputs.pre-release }}" == "true" ]; then
+            npm publish --tag beta
+          else
+            npm publish
+          fi
+
+      - name: Release summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tag: ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Release type: ${{ inputs.release-type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- NPM publish: ${{ inputs.npm-publish }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub release: ${{ inputs.github-release }}" >> $GITHUB_STEP_SUMMARY

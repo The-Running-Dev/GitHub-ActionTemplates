@@ -1,0 +1,103 @@
+name: Docusaurus Site CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Lint and validate documentation
+  lint:
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/ci/lint.yml@main
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      eslint-command: 'npm run lint'
+      prettier-command: 'npm run format:check'
+      run-type-check: false
+
+  # Build Docusaurus site
+  build:
+    needs: [lint]
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      build-command: 'npm run build'
+      build-output-dir: 'build'
+      artifact-name: 'docusaurus-site'
+      run-pre-build: true
+      pre-build-command: 'npm run docusaurus clear'
+
+  # Test built site
+  test-build:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: docusaurus-site
+          path: ./build
+
+      - name: Test static site
+        run: |
+          # Check if essential files exist
+          test -f build/index.html
+          test -d build/assets
+          echo "Static site build validation passed"
+
+      - name: Serve and test site
+        run: |
+          npm install -g serve
+          serve -s build -p 3000 &
+          sleep 5
+          curl -f http://localhost:3000 > /dev/null
+          echo "Site serves successfully"
+
+  # Deploy to GitHub Pages (on main branch)
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test-build]
+    runs-on: ubuntu-latest
+    environment: github-pages
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: docusaurus-site
+          path: ./build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: ./build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+
+  # Create release tag for documentation versions
+  release:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [deploy]
+    uses: The-Running-Dev/GitHub-ActionTemplates/templates/release/nodejs-release.yml@main
+    with:
+      node-version: '18'
+      package-manager: 'npm'
+      release-type: 'semantic'
+      github-release: true
+      npm-publish: false
+      build-before-release: false
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
