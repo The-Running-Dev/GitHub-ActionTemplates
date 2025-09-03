@@ -1,0 +1,70 @@
+name: 🐛 Bug Report
+description: Report a bug or issue with existing templates
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below.
+
+  - type: input
+    id: template
+    attributes:
+      label: Template Name
+      description: Which template is causing the issue?
+      placeholder: e.g., nodejs-ci.yml, lint.yml
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe what happened and what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Use template X with configuration Y
+        2. Run workflow
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow Configuration
+      description: Please paste your workflow configuration (remove any sensitive information)
+      render: yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Please paste any relevant error logs
+      render: shell
+
+  - type: input
+    id: runner
+    attributes:
+      label: Runner OS
+      description: What operating system is the GitHub runner using?
+      placeholder: e.g., ubuntu-latest, windows-latest, macos-latest
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here.
