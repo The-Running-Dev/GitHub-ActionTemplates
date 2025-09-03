@@ -59,7 +59,6 @@ GitHub-ActionTemplates/
 │           └── [framework].yml  # e.g., react-ci-cd.yml
 └── docs/
     └── [guide].md              # Documentation files
-```
 
 ## ✅ Template Guidelines
 

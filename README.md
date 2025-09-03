@@ -34,12 +34,6 @@ GitHub-ActionTemplates/
 │   └── sub-templates/
 │       ├── setup-node.yml                 # Node.js environment setup
 │       └── cache-deps.yml                 # Dependency caching
-├── .github/
-│   ├── workflows/
-│   │   └── example-workflows/              # Example workflows using templates
-│   │       ├── react-ci-cd.yml            # React app pipeline
-│   │       ├── angular-ci-cd.yml          # Angular app pipeline
-│   │       └── docusaurus-ci-cd.yml       # Docusaurus site pipeline
 │   └── templates/                          # Legacy location (kept for compatibility)
 │       ├── ci/
 │       │   ├── nodejs-ci.yml              # Complete NodeJS CI pipeline

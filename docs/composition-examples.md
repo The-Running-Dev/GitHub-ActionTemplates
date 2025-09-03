@@ -335,6 +335,9 @@ jobs:
   test:
     needs: [quality-gate]
     uses: The-Running-Dev/GitHub-ActionTemplates/templates/test/coverage.yml@main
+  
+  test:
+    needs: [quality-gate]
     with:
       min-coverage: 80
   
@@ -364,6 +367,12 @@ jobs:
   build:
     needs: [lint, test]  # Both must pass before building
     uses: The-Running-Dev/GitHub-ActionTemplates/templates/build/nodejs-build.yml@main
+  
+  test:
+    uses: ./.github/templates/test/coverage.yml
+  
+  build:
+    needs: [lint, test]  # Both must pass before building
 ```
 
 ### 5. Environment-Specific Configurations
