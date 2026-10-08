@@ -297,6 +297,27 @@ Describe 'docs-build' {
             $template | Should -Contain 'pnpm-lock.yaml'
         }
 
+        It 'moves the site to the output folder' {
+            $workspace = New-DocsWorkspace 'docusaurus'
+            $log = Join-Path $TestDrive 'stub-log-output'
+            New-Item -ItemType Directory -Path $log | Out-Null
+            $stale = Join-Path $workspace 'artifacts' 'docs'
+            New-Item -ItemType Directory -Path $stale -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $stale 'stale.html') -Value 'stale'
+
+            $result = Invoke-DocsBuild $workspace @{
+                PATH         = "$(Join-Path $Fixtures 'build-agent-stub')$([System.IO.Path]::PathSeparator)$env:PATH"
+                STUB_LOG     = $log
+                INPUT_OUTPUT = 'artifacts/docs'
+            }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Log
+            $result.Outputs['path'] | Should -Be 'artifacts/docs'
+            Join-Path $stale 'index.html' | Should -FileContentMatch 'stub site'
+            Join-Path $stale 'stale.html' | Should -Not -Exist
+            Join-Path $workspace 'docs' 'build' | Should -Not -Exist
+        }
+
         It 'explains where the build command comes from when it is missing' -Skip:([bool] (Get-Command build -ErrorAction SilentlyContinue)) {
             $result = Invoke-DocsBuild (New-DocsWorkspace 'docusaurus')
 
@@ -308,7 +329,7 @@ Describe 'docs-build' {
     It 'rejects <Name>' -ForEach @(
         @{ Name = 'an unknown builder'; Environment = @{ INPUT_BUILDER = 'hugo' }; Message = "Unknown builder 'hugo'" }
         @{ Name = 'an unknown package manager'; Environment = @{ INPUT_PACKAGE_MANAGER = 'bun' }; Message = "Unknown package-manager 'bun'" }
-        @{ Name = 'a source outside the workspace'; Environment = @{ INPUT_SOURCE = '../elsewhere' }; Message = "source '../elsewhere' must be a folder inside the workspace" }
+        @{ Name = 'a source outside the workspace'; Environment = @{ INPUT_SOURCE = '../elsewhere' }; Message = "source '../elsewhere' must be inside the workspace" }
         @{ Name = 'a missing source'; Environment = @{ INPUT_SOURCE = 'missing' }; Message = "source folder 'missing' does not exist" }
         @{ Name = 'the source as the output'; Environment = @{ INPUT_OUTPUT = 'docs' }; Message = 'must not be the source folder' }
     ) {
@@ -316,5 +337,212 @@ Describe 'docs-build' {
 
         $result.ExitCode | Should -Not -Be 0
         $result.Log | Should -Match ([regex]::Escape($Message))
+    }
+}
+
+Describe 'run-scripts' {
+    BeforeAll {
+        $script:Script = Join-Path $Actions 'run-scripts' 'run-scripts.ps1'
+
+        # A workspace whose build folder holds the given scripts; each first appends its name to ran.txt.
+        function New-ScriptWorkspace([hashtable] $Scripts) {
+            $workspace = Join-Path $TestDrive "scripts-$([guid]::NewGuid().ToString('n'))"
+            New-Item -ItemType Directory -Path (Join-Path $workspace 'build') -Force | Out-Null
+            foreach ($name in $Scripts.Keys) {
+                Set-Content -LiteralPath (Join-Path $workspace 'build' $name) -Value @(
+                    "Add-Content -LiteralPath (Join-Path `$env:GITHUB_WORKSPACE 'ran.txt') -Value '$name'"
+                    $Scripts[$name]
+                )
+            }
+            return $workspace
+        }
+
+        function Invoke-RunScript([string] $Workspace, [string] $Scripts, [hashtable] $Environment = @{}) {
+            $Environment['GITHUB_WORKSPACE'] = $Workspace
+            $Environment['INPUT_SCRIPTS'] = $Scripts
+            Invoke-ActionScript $Script -Environment $Environment -WorkingDirectory $Workspace
+        }
+
+        function Get-Ran([string] $Workspace) {
+            $ran = Join-Path $Workspace 'ran.txt'
+            if (Test-Path -LiteralPath $ran) { @(Get-Content -LiteralPath $ran) } else { @() }
+        }
+    }
+
+    It 'runs the scripts in order from the workspace root' {
+        $workspace = New-ScriptWorkspace @{ 'one.ps1' = "Set-Content -LiteralPath where.txt -Value (Get-Location).Path"; 'two.ps1' = '' }
+
+        $result = Invoke-RunScript $workspace "./build/one.ps1`n  build/two.ps1  `n"
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        Get-Ran $workspace | Should -Be @('one.ps1', 'two.ps1')
+        Get-Content -LiteralPath (Join-Path $workspace 'where.txt') | Should -Be ([System.IO.Path]::GetFullPath($workspace))
+        $result.Summary | Should -Match ([regex]::Escape('Ran 2 script(s): `./build/one.ps1`, `build/two.ps1`.'))
+    }
+
+    It 'accepts a semicolon-separated list and a working-directory' {
+        $workspace = New-ScriptWorkspace @{ 'one.ps1' = 'Set-Content -LiteralPath where.txt -Value done'; 'two.ps1' = '' }
+
+        $result = Invoke-RunScript $workspace 'build/one.ps1; build/two.ps1' @{ INPUT_WORKING_DIRECTORY = 'build' }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        Get-Ran $workspace | Should -Be @('one.ps1', 'two.ps1')
+        Join-Path $workspace 'build' 'where.txt' | Should -Exist
+    }
+
+    It 'stops at a script that <Name>' -ForEach @(
+        @{ Name = 'throws'; Body = 'throw "broken"' }
+        @{ Name = 'exits non-zero'; Body = 'exit 3' }
+        @{ Name = 'runs a failing native command before a passing one'; Body = "pwsh -NoProfile -Command 'exit 4'`npwsh -NoProfile -Command 'exit 0'" }
+    ) {
+        $workspace = New-ScriptWorkspace @{ 'bad.ps1' = $Body; 'after.ps1' = '' }
+
+        $result = Invoke-RunScript $workspace "build/bad.ps1`nbuild/after.ps1"
+
+        $result.ExitCode | Should -Not -Be 0
+        Get-Ran $workspace | Should -Be @('bad.ps1')
+    }
+
+    It 'checks every path before running any script' {
+        $workspace = New-ScriptWorkspace @{ 'one.ps1' = '' }
+
+        $result = Invoke-RunScript $workspace "build/one.ps1`nbuild/missing.ps1"
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Log | Should -Match ([regex]::Escape("script 'build/missing.ps1' does not exist"))
+        Get-Ran $workspace | Should -BeNullOrEmpty
+    }
+
+    It 'rejects <Name>' -ForEach @(
+        @{ Name = 'a command instead of a path'; Scripts = 'npm --prefix site ci'; Message = 'Pass script paths only' }
+        @{ Name = 'a script outside the workspace'; Scripts = '../outside.ps1'; Message = "script '../outside.ps1' must be inside the workspace" }
+        @{ Name = 'an empty list'; Scripts = " `n ; "; Message = 'No scripts given' }
+    ) {
+        $result = Invoke-RunScript (New-ScriptWorkspace @{}) $Scripts
+
+        $result.ExitCode | Should -Not -Be 0
+        # The error view wraps long messages at the console width onto `| ` continuation lines.
+        ($result.Log -replace '\s*\r?\n\s*\|\s*', ' ') | Should -Match ([regex]::Escape($Message))
+    }
+}
+
+Describe 'changelog' {
+    BeforeAll {
+        $script:Script = Join-Path $Actions 'changelog' 'changelog.ps1'
+        $script:Dash = [char] 0x2014
+        $script:History = New-GitRepository (Join-Path $TestDrive 'history')
+        foreach ($subject in 'feat: add <thing> [beta] (#12)', 'chore: update changelog (#13)', 'fix: direct commit') {
+            git -C $History commit --quiet --allow-empty -m $subject
+        }
+
+        function Invoke-Changelog([string] $Workspace, [hashtable] $Environment) {
+            $Environment['GITHUB_WORKSPACE'] = $Workspace
+            # Keeps the action from adding a safe.directory to the global git config.
+            $Environment['GITHUB_ACTIONS'] = ''
+            Invoke-ActionScript $Script -Environment $Environment -WorkingDirectory $Workspace
+        }
+    }
+
+    It 'writes one entry per commit, newest first, with pull request links' {
+        $result = Invoke-Changelog $History @{ INPUT_PATH = 'docs/changelog.md'; INPUT_FRONT_MATTER = "slug: changelog`nsidebar_position: 9" }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $lines = @(Get-Content -LiteralPath (Join-Path $History 'docs' 'changelog.md'))
+        $lines[0..3] | Should -Be @('---', 'slug: changelog', 'sidebar_position: 9', '---')
+        $lines | Should -Contain '# Changelog'
+        $entries = @($lines | Where-Object { $_ -like '- *' })
+        # The three commits above after New-GitRepository's two, less the changelog update.
+        $entries.Count | Should -Be 4
+        $entries[0] | Should -Match ('^- \*\*\d{4}-\d{2}-\d{2}\*\* ' + [regex]::Escape("$Dash fix: direct commit") + '$')
+        $entries[1] | Should -Match ([regex]::Escape("** $Dash [feat: add &lt;thing&gt; \[beta\] (#12)](https://github.com/Octo-Org/Sample.Repo/pull/12)") + '$')
+        $entries[3] | Should -Match ([regex]::Escape("** $Dash commit 0") + '$')
+        $result.Outputs['entries'] | Should -Be '4'
+    }
+
+    It 'writes no front matter by default and takes a title' {
+        $result = Invoke-Changelog $History @{ INPUT_PATH = 'CHANGES.md'; INPUT_TITLE = 'Release history' }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        (Get-Content -LiteralPath (Join-Path $History 'CHANGES.md'))[0] | Should -Be '# Release history'
+    }
+
+    It 'fails on a shallow checkout' {
+        $shallow = Join-Path $TestDrive 'shallow'
+        git clone --quiet --depth 1 ([uri]::new($History).AbsoluteUri) $shallow
+
+        $result = Invoke-Changelog $shallow @{ INPUT_PATH = 'changelog.md' }
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Log | Should -Match 'fetch-depth: 0'
+    }
+
+    It 'rejects a page outside the workspace' {
+        $result = Invoke-Changelog $History @{ INPUT_PATH = '../changelog.md' }
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Log | Should -Match 'must be inside the workspace'
+    }
+}
+
+Describe 'node-scripts' {
+    BeforeAll {
+        $script:Script = Join-Path $Actions 'node-scripts' 'node-scripts.ps1'
+
+        # package.json scripts that append to <workspace>/order.txt, so the run order can be read back.
+        function New-NodeProject([string] $Path, [string[]] $Scripts, [hashtable] $Overrides = @{}) {
+            New-Item -ItemType Directory -Path $Path -Force | Out-Null
+            $name = (Split-Path $Path -Leaf).ToLowerInvariant()
+            $commands = [ordered]@{}
+            foreach ($script in $Scripts) {
+                $commands[$script] = "node -e `"require('fs').appendFileSync('../order.txt', '${name}:$script\n')`""
+            }
+            foreach ($script in $Overrides.Keys) { $commands[$script] = $Overrides[$script] }
+            [ordered]@{ name = $name; version = '1.0.0'; private = $true; scripts = $commands } |
+                ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Path 'package.json')
+        }
+
+        function Invoke-NodeScript([string] $Workspace, [hashtable] $Environment) {
+            $Environment['GITHUB_WORKSPACE'] = $Workspace
+            Invoke-ActionScript $Script -Environment $Environment -WorkingDirectory $Workspace
+        }
+    }
+
+    It 'builds the dependencies, then runs the scripts in order' {
+        $workspace = Join-Path $TestDrive 'ordered'
+        New-NodeProject (Join-Path $workspace 'engine') 'build'
+        New-NodeProject (Join-Path $workspace 'site') 'check', 'merge'
+
+        $result = Invoke-NodeScript $workspace @{ INPUT_PATH = 'site'; INPUT_SCRIPTS = "check merge"; INPUT_DEPENDENCIES = 'engine' }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        @(Get-Content -LiteralPath (Join-Path $workspace 'order.txt')) | Should -Be @('engine:build', 'site:check', 'site:merge')
+        $result.Summary | Should -Match ([regex]::Escape('Ran `check`, `merge` in `site`.'))
+    }
+
+    It 'stops at a failing script' {
+        $workspace = Join-Path $TestDrive 'failing'
+        New-NodeProject (Join-Path $workspace 'site') 'merge' @{ check = 'node -e "process.exit(2)"' }
+
+        $result = Invoke-NodeScript $workspace @{ INPUT_PATH = 'site'; INPUT_SCRIPTS = "check`nmerge" }
+
+        $result.ExitCode | Should -Not -Be 0
+        Join-Path $workspace 'order.txt' | Should -Not -Exist
+    }
+
+    It 'rejects <Name>' -ForEach @(
+        @{ Name = 'a folder without package.json'; Environment = @{ INPUT_PATH = 'empty' }; Message = "path 'empty' has no package.json" }
+        @{ Name = 'a dependency without package.json'; Environment = @{ INPUT_PATH = 'site'; INPUT_DEPENDENCIES = 'empty' }; Message = "dependency 'empty' has no package.json" }
+        @{ Name = 'a project outside the workspace'; Environment = @{ INPUT_PATH = '../site' }; Message = 'must be inside the workspace' }
+        @{ Name = 'an unknown package manager'; Environment = @{ INPUT_PATH = 'site'; INPUT_PACKAGE_MANAGER = 'bun' }; Message = 'bun' }
+    ) {
+        $workspace = Join-Path $TestDrive "rejects-$([guid]::NewGuid().ToString('n'))"
+        New-Item -ItemType Directory -Path (Join-Path $workspace 'empty') -Force | Out-Null
+        New-NodeProject (Join-Path $workspace 'site') 'build'
+
+        $result = Invoke-NodeScript $workspace $Environment.Clone()
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Log | Should -Match ([regex]::Escape($Message))
+        Join-Path $workspace 'order.txt' | Should -Not -Exist
     }
 }

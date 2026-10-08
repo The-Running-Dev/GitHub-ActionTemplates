@@ -301,10 +301,71 @@ function Resolve-WorkspacePath {
     $comparison = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
 
     if (-not $full.StartsWith($root + [System.IO.Path]::DirectorySeparatorChar, $comparison)) {
-        throw "The $Name '$Path' must be a folder inside the workspace '$root'."
+        throw "The $Name '$Path' must be inside the workspace '$root'."
     }
 
     return $full
+}
+
+function Split-ActionList {
+    <#
+    .SYNOPSIS
+    Splits a list input on new lines and semicolons, trimming entries and dropping empty ones.
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param([AllowEmptyString()][string] $Value)
+
+    return @($Value -split '[
+;]+' | ForEach-Object Trim | Where-Object { $_ })
+}
+
+function Get-PackageManager {
+    <#
+    .SYNOPSIS
+    Returns the package manager for a Node project folder: the given one, or the one its lockfile
+    implies (pnpm-lock.yaml, yarn.lock, else npm).
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string] $Path,
+        [string] $PackageManager = ''
+    )
+
+    if ($PackageManager) {
+        if ($PackageManager -notin 'npm', 'pnpm', 'yarn') {
+            throw "Unknown package-manager '$PackageManager'. Use 'npm', 'pnpm' or 'yarn', or leave it empty to detect it."
+        }
+        return $PackageManager
+    }
+    if (Test-Path -LiteralPath (Join-Path $Path 'pnpm-lock.yaml')) { return 'pnpm' }
+    if (Test-Path -LiteralPath (Join-Path $Path 'yarn.lock')) { return 'yarn' }
+    return 'npm'
+}
+
+function Install-NodePackage {
+    <#
+    .SYNOPSIS
+    Installs a Node project's dependencies from its lockfile (npm ci, pnpm --frozen-lockfile,
+    yarn install), or with npm install when an npm project has no lockfile.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $Path,
+        [Parameter(Mandatory)][ValidateSet('npm', 'pnpm', 'yarn')][string] $PackageManager
+    )
+
+    Push-Location -LiteralPath $Path
+    try {
+        switch ($PackageManager) {
+            'npm' { if ((Test-Path package-lock.json) -or (Test-Path npm-shrinkwrap.json)) { npm ci } else { npm install } }
+            'pnpm' { pnpm install --frozen-lockfile }
+            'yarn' { yarn install }
+        }
+        if ($LASTEXITCODE -ne 0) { throw "$PackageManager install failed in '$Path'." }
+    }
+    finally { Pop-Location }
 }
 
 Export-ModuleMember -Function *-*

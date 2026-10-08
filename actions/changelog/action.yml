@@ -1,0 +1,47 @@
+name: Changelog
+description: Write a Markdown changelog page from the git history, one entry per commit with pull request links. For repositories that squash-merge every pull request.
+author: The-Running-Dev
+
+inputs:
+  path:
+    description: Page to write, relative to the workspace.
+    required: true
+  front-matter:
+    description: 'Front matter for the page, one `key: value` per line, without the `---` fences. Empty writes none.'
+    required: false
+    default: ''
+  title:
+    description: Page heading.
+    required: false
+    default: Changelog
+  ref:
+    description: Commit or branch whose history is listed.
+    required: false
+    default: HEAD
+  exclude:
+    description: Regular expression; commits whose subject matches it are left out.
+    required: false
+    default: '(?i)update changelog'
+  repository:
+    description: '`owner/repo` for pull request links. Defaults to the current repository.'
+    required: false
+    default: ''
+
+outputs:
+  entries:
+    description: Number of entries written.
+    value: ${{ steps.changelog.outputs.entries }}
+
+runs:
+  using: composite
+  steps:
+    - id: changelog
+      shell: pwsh
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_FRONT_MATTER: ${{ inputs.front-matter }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_REF: ${{ inputs.ref }}
+        INPUT_EXCLUDE: ${{ inputs.exclude }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH changelog.ps1)'

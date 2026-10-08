@@ -1,0 +1,21 @@
+name: Run scripts
+description: Run repository scripts in order, by path. Any failure, including a failing native command, stops the step.
+author: The-Running-Dev
+
+inputs:
+  scripts:
+    description: Script paths relative to the workspace, one per line (or separated by `;`). `.ps1` files run in PowerShell; other files must be executable.
+    required: true
+  working-directory:
+    description: Folder the scripts run from, relative to the workspace. Empty uses the workspace root.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - shell: pwsh
+      env:
+        INPUT_SCRIPTS: ${{ inputs.scripts }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH run-scripts.ps1)'

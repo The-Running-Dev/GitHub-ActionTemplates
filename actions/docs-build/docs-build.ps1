@@ -17,9 +17,7 @@ $buildCommand = Get-ActionInput 'build-command' 'build'
 $output = Get-ActionInput 'output' "$source/build"
 
 if ($builder -notin 'template', 'node') { throw "Unknown builder '$builder'. Use 'template' or 'node'." }
-if ($packageManager -and $packageManager -notin 'npm', 'pnpm', 'yarn') {
-    throw "Unknown package-manager '$packageManager'. Use 'npm', 'pnpm' or 'yarn', or leave it empty to detect it."
-}
+if ($packageManager) { $packageManager = Get-PackageManager $workspace $packageManager }
 
 $sourcePath = Resolve-WorkspacePath $source $workspace 'source'
 $outputPath = Resolve-WorkspacePath $output $workspace 'output'
@@ -62,22 +60,22 @@ if ($builder -eq 'template') {
 
     Write-Host "Building '$source' with the $templateName"
     build @arguments
+
+    # The template always builds to <source>/build; another output folder gets the site moved there.
+    $templateOutput = Join-Path $sourcePath 'build'
+    if ($outputPath -ne $templateOutput -and (Test-Path -LiteralPath $templateOutput -PathType Container)) {
+        if (Test-Path -LiteralPath $outputPath) { Remove-Item -LiteralPath $outputPath -Recurse -Force }
+        New-Item -ItemType Directory -Path (Split-Path $outputPath) -Force | Out-Null
+        Move-Item -LiteralPath $templateOutput -Destination $outputPath
+        Write-Host "Moved the site to '$(Get-RelativePath $outputPath)'"
+    }
 }
 else {
+    $packageManager = Get-PackageManager $sourcePath $packageManager
+    Write-Host "Building '$source' with $packageManager run $buildCommand"
+    Install-NodePackage $sourcePath $packageManager
     Push-Location -LiteralPath $sourcePath
-    try {
-        if (-not $packageManager) {
-            $packageManager = if (Test-Path pnpm-lock.yaml) { 'pnpm' } elseif (Test-Path yarn.lock) { 'yarn' } else { 'npm' }
-        }
-
-        Write-Host "Building '$source' with $packageManager run $buildCommand"
-        switch ($packageManager) {
-            'npm' { if ((Test-Path package-lock.json) -or (Test-Path npm-shrinkwrap.json)) { npm ci } else { npm install } }
-            'pnpm' { pnpm install --frozen-lockfile }
-            'yarn' { yarn install }
-        }
-        & $packageManager run $buildCommand
-    }
+    try { & $packageManager run $buildCommand }
     finally { Pop-Location }
 }
 

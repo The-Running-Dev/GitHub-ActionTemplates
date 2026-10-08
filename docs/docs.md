@@ -60,14 +60,20 @@ listed in [`actions/docs-build/template/package.json`](../actions/docs-build/tem
 | `template` | bundled | Template git URL, optionally `<url>#<branch>`. The repository must be readable without credentials. |
 | `package-manager` | from the lockfile | `npm`, `pnpm` or `yarn`. |
 | `build-command` | `build` | package.json script for the `node` builder. |
-| `output` | `<source>/build` | Folder the build writes the site to. |
+| `output` | `<source>/build` | Folder the site ends up in. The `template` builder moves its site here, for example `artifacts/docs` for scripts that expect it there. |
 | `title` | repository name | Site title for the bundled template. |
-| `pre-build` | | PowerShell run from the repository root before the build, for example to generate pages. |
-| `post-build` | | PowerShell run from the repository root after the build, for example a link check. |
+| `changelog` | | Page to generate from the git history before the build, relative to the repository root ([`changelog`](../actions/changelog/README.md)). Fetches the full history. |
+| `changelog-front-matter` | | Front matter for the changelog page, one `key: value` per line. |
+| `pre-build` | | Repository scripts run from the repository root before the build, by path, one per line ([`run-scripts`](../actions/run-scripts/README.md)). |
+| `node-project` | | Node project folder whose scripts run after the build, for example a site that checks or merges the built docs ([`node-scripts`](../actions/node-scripts/README.md)). |
+| `node-scripts` | `build` | package.json scripts `node-project` runs, in order. |
+| `node-dependencies` | | Local Node projects `node-project` depends on, one per line; each is installed and built first. |
+| `browser` | `false` | `true` provides a system Chromium to `node-project` for browser tests. |
+| `post-build` | | Repository scripts run from the repository root after the build, by path, one per line. |
 | `deploy` | `true` | `false` only builds and uploads the artifact. |
 | `image` | build-agent, by digest | Container image for the build job. It needs PowerShell 7, git and Node, and `build` for the `template` builder. |
 | `runs-on` | `ubuntu-latest` | Runner for the build job; it must run Linux containers. |
-| `fetch-depth` | `1` | `0` for full history (last-updated dates from git). |
+| `fetch-depth` | `1` | `0` for full history (last-updated dates from git). Always `0` when `changelog` is set. |
 | `submodules` | `false` | As for `actions/checkout`. |
 | `artifact-name` | `github-pages` | Pages artifact name; change it when a workflow builds more than one site. |
 
@@ -77,6 +83,25 @@ listed in [`actions/docs-build/template/package.json`](../actions/docs-build/tem
 |---|---|
 | `page-url` | Deployed site URL; empty when nothing was deployed. |
 
+## Steps
+
+The build job runs, in order, only the steps whose inputs are set:
+
+1. `changelog`: writes the changelog page.
+2. `pre-build`: repository scripts, for example a documentation check or page generation.
+3. The documentation build.
+4. `node-project`: install the dependencies and the project, then run `node-scripts`.
+5. `post-build`: repository scripts, for example a check of the built site.
+6. Upload of `output` as the Pages artifact.
+
+## Repository scripts
+
+`pre-build` and `post-build` take script paths, not commands: a step that needs logic of its
+own lives in a script in the calling repository, and the workflow YAML stays free of script
+code. `.ps1` scripts run in PowerShell and fail the build by throwing, by a non-zero `exit` or
+by a failing native command; other files must be executable. Paths are checked before the
+first script runs.
+
 ## Examples
 
 A title and a link check:
@@ -85,6 +110,23 @@ A title and a link check:
     with:
       title: Plugin Contract
       post-build: ./build/Test-Documentation.ps1
+```
+
+Two checks before the build, then a site project that checks and merges the built docs with
+browser tests, after building the engine it depends on:
+
+```yaml
+    with:
+      output: artifacts/docs
+      changelog: docs/docs/CHANGELOG.md
+      changelog-front-matter: 'slug: changelog'
+      pre-build: |
+        ./build/Test-Documentation.ps1
+        ./build/Test-SliceStatusMarkers.ps1
+      node-project: site
+      node-scripts: check merge
+      node-dependencies: src/engine
+      browser: true
 ```
 
 A site with its own `package.json` in `website/` that builds to `website/dist`:

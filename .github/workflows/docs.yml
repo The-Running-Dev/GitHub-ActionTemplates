@@ -30,7 +30,7 @@ on:
         type: string
         default: build
       output:
-        description: Folder the build writes the site to. Defaults to `<source>/build`.
+        description: Folder the site ends up in. Defaults to `<source>/build`; the `template` builder moves its site here.
         type: string
         default: ''
       title:
@@ -38,13 +38,37 @@ on:
         type: string
         default: ''
       pre-build:
-        description: PowerShell run from the repository root before the build.
+        description: Repository scripts run before the build, by path, one per line. `.ps1` files run in PowerShell.
         type: string
         default: ''
       post-build:
-        description: PowerShell run from the repository root after the build.
+        description: Repository scripts run after the build (and after `node-project`), by path, one per line.
         type: string
         default: ''
+      changelog:
+        description: Page to generate from the git history before the build (for squash-merged repositories), e.g. `docs/changelog.md`. Fetches all history. Empty skips it.
+        type: string
+        default: ''
+      changelog-front-matter:
+        description: 'Front matter for the changelog page, one `key: value` per line.'
+        type: string
+        default: ''
+      node-project:
+        description: Node project run after the build, e.g. a landing page that merges itself into the site. Empty skips it.
+        type: string
+        default: ''
+      node-scripts:
+        description: package.json scripts `node-project` runs, in order, separated by spaces.
+        type: string
+        default: build
+      node-dependencies:
+        description: Local Node projects `node-project` depends on, one per line; each is installed and built first.
+        type: string
+        default: ''
+      browser:
+        description: Provide a system Chromium to `node-project` for browser tests.
+        type: boolean
+        default: false
       deploy:
         description: Deploy to GitHub Pages from the default branch and tags. `false` only builds.
         type: boolean
@@ -58,7 +82,7 @@ on:
         type: string
         default: ubuntu-latest
       fetch-depth:
-        description: Commits to fetch; 0 fetches all history (for last-updated dates from git).
+        description: Commits to fetch; 0 fetches all history (for last-updated dates from git). `changelog` always fetches all.
         type: number
         default: 1
       submodules:
@@ -92,7 +116,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: ${{ inputs.fetch-depth }}
+          fetch-depth: ${{ inputs.changelog != '' && '0' || inputs.fetch-depth }}
           submodules: ${{ inputs.submodules }}
           persist-credentials: false
 
@@ -106,12 +130,18 @@ jobs:
         if: inputs.deploy && steps.context.outputs.should-publish == 'true'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
+      - name: Changelog
+        if: inputs.changelog != ''
+        uses: $/actions/changelog
+        with:
+          path: ${{ inputs.changelog }}
+          front-matter: ${{ inputs.changelog-front-matter }}
+
       - name: Pre-build
         if: inputs.pre-build != ''
-        shell: pwsh
-        env:
-          GHAT_HOOK: ${{ inputs.pre-build }}
-        run: '& ([scriptblock]::Create($env:GHAT_HOOK))'
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.pre-build }}
 
       - name: Build
         id: build
@@ -128,12 +158,21 @@ jobs:
           build-command: ${{ inputs.build-command }}
           output: ${{ inputs.output }}
 
+      - name: Node project
+        if: inputs.node-project != ''
+        uses: $/actions/node-scripts
+        with:
+          path: ${{ inputs.node-project }}
+          scripts: ${{ inputs.node-scripts }}
+          dependencies: ${{ inputs.node-dependencies }}
+          package-manager: ${{ inputs.package-manager }}
+          browser: ${{ inputs.browser }}
+
       - name: Post-build
         if: inputs.post-build != ''
-        shell: pwsh
-        env:
-          GHAT_HOOK: ${{ inputs.post-build }}
-        run: '& ([scriptblock]::Create($env:GHAT_HOOK))'
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.post-build }}
 
       - name: Upload
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

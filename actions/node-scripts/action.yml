@@ -1,0 +1,38 @@
+name: Node scripts
+description: Install a Node project and run its package.json scripts in order, after building the local projects it depends on. Optionally provides a system Chromium for browser tests.
+author: The-Running-Dev
+
+inputs:
+  path:
+    description: Node project folder, relative to the workspace.
+    required: true
+  scripts:
+    description: package.json scripts to run in order, separated by spaces or new lines.
+    required: false
+    default: build
+  dependencies:
+    description: Local Node project folders it depends on (for example `file:` dependencies), one per line. Each is installed and its `build` script run first.
+    required: false
+    default: ''
+  package-manager:
+    description: '`npm`, `pnpm` or `yarn`. Empty detects it from each lockfile.'
+    required: false
+    default: ''
+  browser:
+    description: >-
+      `true` finds a system Chromium (installing the `chromium` package with apt-get when there is none) and
+      exposes it to the scripts as PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, PUPPETEER_EXECUTABLE_PATH and CHROME_BIN.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - shell: pwsh
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_SCRIPTS: ${{ inputs.scripts }}
+        INPUT_DEPENDENCIES: ${{ inputs.dependencies }}
+        INPUT_PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        INPUT_BROWSER: ${{ inputs.browser }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH node-scripts.ps1)'
