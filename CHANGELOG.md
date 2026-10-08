@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-08
+
 ### Added
 - `actions/run-scripts`: runs repository scripts by path, in order. Checks every path first and
   fails on a throw, a non-zero exit or a failing native command.
