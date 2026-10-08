@@ -1,0 +1,69 @@
+name: Build context
+description: Normalise the run context (event, branch, publish decision, image name) into simple outputs.
+author: The-Running-Dev
+
+inputs:
+  registry:
+    description: Container registry host used to build the `image` output. Empty for Docker Hub.
+    required: false
+    default: ghcr.io
+  image-name:
+    description: Image name under the owner. Defaults to the repository name.
+    required: false
+    default: ''
+
+outputs:
+  owner:
+    description: Repository owner, lowercased.
+    value: ${{ steps.context.outputs.owner }}
+  repository:
+    description: Repository name without the owner.
+    value: ${{ steps.context.outputs.repository }}
+  sha:
+    description: Commit SHA.
+    value: ${{ steps.context.outputs.sha }}
+  short-sha:
+    description: First 7 characters of the commit SHA.
+    value: ${{ steps.context.outputs.short-sha }}
+  event:
+    description: Triggering event name.
+    value: ${{ steps.context.outputs.event }}
+  ref-name:
+    description: Short ref name (branch, tag, or `<n>/merge` for pull requests).
+    value: ${{ steps.context.outputs.ref-name }}
+  branch:
+    description: Source branch (the head branch for pull requests), empty for tags.
+    value: ${{ steps.context.outputs.branch }}
+  ref-slug:
+    description: Branch or tag as a lowercase slug of [a-z0-9-], at most 63 characters.
+    value: ${{ steps.context.outputs.ref-slug }}
+  default-branch:
+    description: Repository default branch.
+    value: ${{ steps.context.outputs.default-branch }}
+  is-pull-request:
+    description: '`true` for pull_request and pull_request_target events.'
+    value: ${{ steps.context.outputs.is-pull-request }}
+  is-tag:
+    description: '`true` when the build runs for a tag.'
+    value: ${{ steps.context.outputs.is-tag }}
+  is-default-branch:
+    description: '`true` when the build runs for the default branch (not a pull request).'
+    value: ${{ steps.context.outputs.is-default-branch }}
+  should-publish:
+    description: '`true` for tag builds and default-branch builds; `false` for pull requests and other branches.'
+    value: ${{ steps.context.outputs.should-publish }}
+  image:
+    description: Lowercased `<registry>/<owner>/<image-name>`.
+    value: ${{ steps.context.outputs.image }}
+
+runs:
+  using: composite
+  steps:
+    - id: context
+      shell: pwsh
+      env:
+        INPUT_REGISTRY: ${{ inputs.registry }}
+        INPUT_IMAGE_NAME: ${{ inputs.image-name }}
+        GHAT_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        GHAT_PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH context.ps1)'

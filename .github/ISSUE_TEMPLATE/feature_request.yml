@@ -1,5 +1,5 @@
 name: ✨ Feature Request
-description: Suggest a new template or enhancement
+description: Suggest a new template, action or enhancement
 title: "[Feature] "
 labels: ["enhancement"]
 body:
@@ -14,11 +14,10 @@ body:
       label: Feature Type
       description: What type of feature are you requesting?
       options:
-        - New template for a framework/language
-        - Enhancement to existing template
-        - New sub-template/composite action
+        - New reusable workflow for a project type
+        - Enhancement to an existing template or action
+        - New composite action
         - Documentation improvement
-        - Example workflow
         - Other
     validations:
       required: true

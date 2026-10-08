@@ -1,0 +1,22 @@
+name: Debug
+description: Print the run context, runner details, tool versions, disk space and workspace contents.
+author: The-Running-Dev
+
+inputs:
+  enabled:
+    description: Set to `false` to skip, so callers can wire it to a `debug` input.
+    required: false
+    default: 'true'
+  include-event:
+    description: Also print the full event payload.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - if: inputs.enabled == 'true'
+      shell: pwsh
+      env:
+        INPUT_INCLUDE_EVENT: ${{ inputs.include-event }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH debug.ps1)'

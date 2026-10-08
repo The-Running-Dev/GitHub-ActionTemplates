@@ -1,0 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fixture-python-lib"
+version = "5.6.7-rc.1"

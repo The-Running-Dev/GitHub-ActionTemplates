@@ -1,0 +1,79 @@
+name: Version
+description: Compute a semantic version for the build from git tags, a manifest file, or the run number.
+author: The-Running-Dev
+
+inputs:
+  strategy:
+    description: >-
+      Where the version comes from. `tag` (nearest `v*` tag, next patch as prerelease),
+      `manifest` (package.json, *.csproj, *.psd1, Cargo.toml, pyproject.toml, VERSION),
+      or `run-number` (`base-version` + run number).
+    required: false
+    default: tag
+  manifest:
+    description: Manifest path relative to `working-directory`. Auto-detected when empty (manifest strategy only).
+    required: false
+    default: ''
+  base-version:
+    description: Major.Minor used by the `run-number` strategy, for example `1.0` gives `1.0.<run>`.
+    required: false
+    default: ''
+  tag-prefix:
+    description: Prefix of release tags.
+    required: false
+    default: v
+  prerelease-label:
+    description: Prerelease label for builds that are not tag builds.
+    required: false
+    default: ci
+  pr-label:
+    description: Prerelease label for pull request builds.
+    required: false
+    default: pr
+  working-directory:
+    description: Directory containing the git checkout and manifest.
+    required: false
+    default: .
+
+outputs:
+  version:
+    description: Full semantic version, for example `1.2.4-ci.57` or `1.2.3`.
+    value: ${{ steps.version.outputs.version }}
+  major:
+    description: Major component.
+    value: ${{ steps.version.outputs.major }}
+  minor:
+    description: Minor component.
+    value: ${{ steps.version.outputs.minor }}
+  patch:
+    description: Patch component.
+    value: ${{ steps.version.outputs.patch }}
+  prerelease:
+    description: Prerelease part without the leading dash, empty for stable versions.
+    value: ${{ steps.version.outputs.prerelease }}
+  is-prerelease:
+    description: '`true` when the version has a prerelease part.'
+    value: ${{ steps.version.outputs.is-prerelease }}
+  is-release:
+    description: '`true` when the build runs for a tag.'
+    value: ${{ steps.version.outputs.is-release }}
+  tag:
+    description: The version with the tag prefix, for example `v1.2.3`.
+    value: ${{ steps.version.outputs.tag }}
+
+runs:
+  using: composite
+  steps:
+    - id: version
+      shell: pwsh
+      env:
+        INPUT_STRATEGY: ${{ inputs.strategy }}
+        INPUT_MANIFEST: ${{ inputs.manifest }}
+        INPUT_BASE_VERSION: ${{ inputs.base-version }}
+        INPUT_TAG_PREFIX: ${{ inputs.tag-prefix }}
+        INPUT_PRERELEASE_LABEL: ${{ inputs.prerelease-label }}
+        INPUT_PR_LABEL: ${{ inputs.pr-label }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        GHAT_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        GHAT_PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH version.ps1)'

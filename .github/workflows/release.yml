@@ -1,0 +1,95 @@
+name: Release
+
+# Push a vX.Y.Z tag on a commit that is already on the default branch:
+#   git tag v1.2.3 && git push origin v1.2.3
+# The release notes come from the matching CHANGELOG.md section, and the major tag
+# (v1) is moved to the same commit so `@v1` consumers pick up the release.
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  lint:
+    permissions:
+      contents: read
+    uses: $/.github/workflows/lint.yml
+
+  self-test:
+    permissions:
+      contents: read
+    uses: $/.github/workflows/self-test.yml
+
+  release:
+    name: Publish ${{ github.ref_name }}
+    needs: [lint, self-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the tag is on the default branch
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          $commit = git rev-parse "$env:TAG^{commit}"
+          git merge-base --is-ancestor $commit "origin/$env:DEFAULT_BRANCH"
+          if ($LASTEXITCODE -ne 0) { throw "Tag $env:TAG ($commit) is not on $env:DEFAULT_BRANCH." }
+
+      - name: Release notes
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: ./scripts/Get-ChangelogSection.ps1 -Version $env:TAG | Set-Content (Join-Path $env:RUNNER_TEMP 'notes.md')
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          $notes = Join-Path $env:RUNNER_TEMP 'notes.md'
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+              gh release edit $env:TAG --notes-file $notes
+          }
+          else {
+              gh release create $env:TAG --verify-tag --title $env:TAG --notes-file $notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Creating the release failed.' }
+
+      - name: Move major tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $false
+          $commit = git rev-parse "$env:TAG^{commit}"
+          $major = ($env:TAG -split '\.')[0]
+          $repository = $env:GITHUB_REPOSITORY
+
+          gh api "repos/$repository/git/ref/tags/$major" --silent 2>$null
+          if ($LASTEXITCODE -eq 0) {
+              gh api --method PATCH "repos/$repository/git/refs/tags/$major" -f "sha=$commit" -F force=true --silent
+          }
+          else {
+              gh api --method POST "repos/$repository/git/refs" -f "ref=refs/tags/$major" -f "sha=$commit" --silent
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Moving $major failed." }
+
+          Write-Host "$major -> $commit"
+          "Moved ``$major`` to ``$commit`` ($env:TAG)." >> $env:GITHUB_STEP_SUMMARY

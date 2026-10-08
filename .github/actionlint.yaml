@@ -1,0 +1,6 @@
+# actionlint 1.7.12 predates the `$/` self-repository syntax (rhysd/actionlint#711).
+# Ignore only the errors about `$/` references; drop this once a release supports them.
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      - '"\$/'
