@@ -1,5 +1,5 @@
 name: 🐛 Bug Report
-description: Report a bug or issue with existing templates
+description: Report a problem with a workflow template or action
 title: "[Bug] "
 labels: ["bug"]
 body:
@@ -11,9 +11,9 @@ body:
   - type: input
     id: template
     attributes:
-      label: Template Name
-      description: Which template is causing the issue?
-      placeholder: e.g., nodejs-ci.yml, lint.yml
+      label: Template or action
+      description: Which template or action, and the ref you pinned?
+      placeholder: e.g., actions/version@v0, actions/context@v0.1.0
     validations:
       required: true
 
@@ -32,7 +32,7 @@ body:
       label: Steps to Reproduce
       description: How can we reproduce this issue?
       placeholder: |
-        1. Use template X with configuration Y
+        1. Call the template or action with these inputs
         2. Run workflow
         3. See error
     validations:

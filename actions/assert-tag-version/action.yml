@@ -1,0 +1,41 @@
+name: Assert tag version
+description: Fail a tag build when the tag does not match the version in the project manifest.
+author: The-Running-Dev
+
+inputs:
+  manifest:
+    description: Manifest path relative to `working-directory`. Auto-detected when empty.
+    required: false
+    default: ''
+  tag:
+    description: Tag to check. Defaults to the current ref when the build runs for a tag; otherwise the check is skipped.
+    required: false
+    default: ''
+  tag-prefix:
+    description: Prefix of release tags.
+    required: false
+    default: v
+  working-directory:
+    description: Directory containing the manifest.
+    required: false
+    default: .
+
+outputs:
+  checked:
+    description: '`true` when a tag was compared, `false` when the check was skipped.'
+    value: ${{ steps.assert.outputs.checked }}
+  version:
+    description: The matching version, empty when skipped.
+    value: ${{ steps.assert.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: assert
+      shell: pwsh
+      env:
+        INPUT_MANIFEST: ${{ inputs.manifest }}
+        INPUT_TAG: ${{ inputs.tag }}
+        INPUT_TAG_PREFIX: ${{ inputs.tag-prefix }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH assert-tag-version.ps1)'
