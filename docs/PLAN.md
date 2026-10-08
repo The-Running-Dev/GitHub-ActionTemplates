@@ -12,6 +12,8 @@ consumers and the proving ground, not the design target.
 | Scope | Generic public library; SubZeroDev conventions are inputs, never defaults |
 | Location | Rebuild this repository in place (keep name + history, remove current scaffolding) |
 | Consumer pinning | Moving major tag `@v1`; immutable `v1.x.y` tags also published |
+| Extraction | Every step a consumer needs is a reusable action or workflow here; a repository adds only what is specific to it, as scripts in its own repository passed by path |
+| Workflow YAML | No script code in `run:` or in inputs; `run:` only calls a script file |
 | Docs builder | Build-agent image v2 (`ghcr.io/the-running-dev/build-agent`, pinned by digest) runs `build node-template` with a Docusaurus template bundled in `actions/docs-build/template`; no separate docs image |
 
 ## What carries over from Azure DevOps
@@ -129,7 +131,7 @@ Event semantics are identical across archetypes:
 | # | Phase | Work | Exit criteria |
 |---|---|---|---|
 | 1 | Foundation | Remove `templates/`, `.github/templates/`, example-workflows; new layout; `lint.yml`, `release.yml`, `dependabot.yml`; actions `debug`, `version`, `assert-tag-version`, `context` | `v0.1.0` released; lint + self-test green |
-| 2 | Docs (pilot) | `docs-build` action + bundled template on the build-agent image, `docs.yml`, fixtures; migrate PluginContract + Specs, then remaining 8 | 10 repos on `docs.yml@v1`, each ≤ 15 lines |
+| 2 | Docs (pilot) | `docs-build` action + bundled template on the build-agent image, `docs.yml`, fixtures; `run-scripts`, `changelog`, `node-scripts` for per-repository steps; migrate PluginContract + Specs, then the remaining repositories | Docs repos on `docs.yml@v0`; callers pass only script paths and settings |
 | 3 | Node + PowerShell | `node-ci.yml`, `pwsh-ci.yml`, `pwsh-check`, `coverage-gate`, `test-report`, `npm-package.yml`; give ServiceContract a pipeline | Node/pwsh repos migrated |
 | 4 | Containers | `container.yml`, `image-gate`, `branch-tip-gate`, `webhook-deploy` | com, SkyNetHR, Adventures, Licensing, Blog migrated |
 | 5 | .NET | `dotnet.yml`, `nuget-feed`; GitVersion strategy in `version` | Platform, Licensing, Platform.Updater, Cleaner migrated; HotCorners/WinGet use it for CI |

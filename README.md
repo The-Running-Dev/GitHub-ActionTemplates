@@ -33,6 +33,9 @@ Complete caller workflows are in [examples/](examples).
 | [`context`](actions/context/README.md) | Normalises the run context: branch, slug, PR, tag, publish decision, image name. |
 | [`debug`](actions/debug/README.md) | Prints the run context, runner, tool versions, disk space and workspace. |
 | [`docs-build`](actions/docs-build/README.md) | Builds a Docusaurus site from a bundled template or the folder's own Node project. |
+| [`run-scripts`](actions/run-scripts/README.md) | Runs repository scripts by path, in order, failing on the first failure. |
+| [`changelog`](actions/changelog/README.md) | Writes a Markdown changelog page from the git history, with pull request links. |
+| [`node-scripts`](actions/node-scripts/README.md) | Installs a Node project and runs its scripts in order, after building its local dependencies; optionally provides Chromium. |
 
 The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners
 (`docs-build` with the `template` builder runs in the build-agent container).

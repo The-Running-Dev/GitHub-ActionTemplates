@@ -10,7 +10,7 @@ versions, naming and security.
 .github/workflows/   Reusable workflows (must be flat) and this repo's own CI
 actions/<name>/      Composite actions: action.yml, <name>.ps1, README.md
 actions/_lib/        Functions.psm1, shared by every action script
-scripts/             Repository tooling (release notes)
+scripts/             This repository's CI steps (analyzer, tests, release) and tooling
 tests/               Pester tests and fixtures/ (one sample project per manifest type)
 docs/                Conventions and the roadmap
 ```
@@ -34,12 +34,19 @@ docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/zizmorcore/zizmor:1.30.1 --offl
 ## Checks
 
 ```powershell
-Invoke-Pester -Path tests
-Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+./scripts/Invoke-Tests.ps1
+./scripts/Invoke-Analyzer.ps1
 ```
 
 Pull requests run the same checks on Linux, Windows and macOS (`lint.yml`, `self-test.yml`).
 `self-test.yml` also runs every action from this checkout and asserts its outputs.
+
+## No scripts in YAML
+
+A `run:` step only calls a script file: `./scripts/X.ps1` in this repository's workflows, the
+action's own `.ps1` in a composite action. Logic, assertions and loops go in the script, where
+they are analysed and tested. Workflows take per-repository steps as script paths
+(`run-scripts`), never as code in an input.
 
 ## Adding or changing an action
 

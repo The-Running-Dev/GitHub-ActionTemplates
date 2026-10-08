@@ -29,17 +29,7 @@ jobs:
 
       - name: Run Pester
         shell: pwsh
-        run: |
-          $pester = Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0'
-          if (-not $pester) { Install-Module Pester -MinimumVersion 5.5.0 -Scope CurrentUser -Force -SkipPublisherCheck }
-          Import-Module Pester -MinimumVersion 5.5.0
-
-          $configuration = New-PesterConfiguration
-          $configuration.Run.Path = 'tests'
-          $configuration.Run.Exit = $true
-          $configuration.Output.Verbosity = 'Detailed'
-          $configuration.Output.CIFormat = 'GithubActions'
-          Invoke-Pester -Configuration $configuration
+        run: ./scripts/Invoke-Tests.ps1
 
   actions:
     name: Actions (${{ matrix.os }})
@@ -104,28 +94,7 @@ jobs:
           EXPECTED_IMAGE: ghcr.io/${{ github.repository }}
           IS_PULL_REQUEST: ${{ github.event_name == 'pull_request' }}
           IS_TAG: ${{ github.ref_type == 'tag' }}
-        run: |
-          $failures = [System.Collections.Generic.List[string]]::new()
-          function Assert-That([bool] $Condition, [string] $Message) {
-              if ($Condition) { Write-Host "ok   $Message" } else { Write-Host "FAIL $Message"; $failures.Add($Message) }
-          }
-
-          $semver = '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$'
-          Assert-That ($env:CONTEXT_IMAGE -eq $env:EXPECTED_IMAGE.ToLowerInvariant()) "context image '$env:CONTEXT_IMAGE'"
-          Assert-That ($env:CONTEXT_SHORT_SHA -eq $env:GITHUB_SHA.Substring(0, 7)) "context short-sha '$env:CONTEXT_SHORT_SHA'"
-          Assert-That ($env:CONTEXT_IS_PULL_REQUEST -eq $env:IS_PULL_REQUEST) "context is-pull-request '$env:CONTEXT_IS_PULL_REQUEST'"
-          if ($env:IS_PULL_REQUEST -eq 'true') {
-              Assert-That ($env:CONTEXT_SHOULD_PUBLISH -eq 'false') 'pull requests are not published'
-          }
-          Assert-That ($env:TAG_VERSION -match $semver) "tag strategy '$env:TAG_VERSION'"
-          Assert-That ($env:RUN_NUMBER_VERSION -match $semver) "run-number strategy '$env:RUN_NUMBER_VERSION'"
-          if ($env:IS_TAG -ne 'true') {
-              Assert-That ($env:TAG_VERSION -match '-') 'tag strategy is a prerelease outside tag builds'
-              Assert-That ($env:MANIFEST_VERSION -like '2.3.4-*') "manifest strategy '$env:MANIFEST_VERSION'"
-          }
-          Assert-That ($env:ASSERT_CHECKED -eq 'true') "assert-tag-version checked '$env:ASSERT_CHECKED'"
-
-          if ($failures.Count) { throw "$($failures.Count) check(s) failed." }
+        run: ./scripts/Test-ActionOutputs.ps1
 
   docs-template:
     name: Docs (template)
@@ -156,8 +125,13 @@ jobs:
     name: Docs artifacts
     needs: [docs-template, docs-node]
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: docs-*
@@ -165,20 +139,4 @@ jobs:
 
       - name: Check the sites
         shell: pwsh
-        run: |
-          $failures = 0
-          foreach ($check in @(
-              @{ Name = 'docs-template'; Marker = 'docs-build-fixture-marker'; Page = 'second/index.html' }
-              @{ Name = 'docs-node'; Marker = 'docs-node-fixture-marker'; Page = 'index.html' }
-          )) {
-              $site = Join-Path 'sites' $check.Name
-              New-Item -ItemType Directory -Path $site -Force | Out-Null
-              tar -xf (Join-Path 'artifacts' $check.Name 'artifact.tar') -C $site
-              if ($LASTEXITCODE -ne 0) { throw "Extracting $($check.Name) failed." }
-
-              $index = Join-Path $site 'index.html'
-              $ok = (Test-Path $index) -and (Get-Content $index -Raw).Contains($check.Marker) -and (Test-Path (Join-Path $site $check.Page))
-              Write-Host "$(if ($ok) { 'ok  ' } else { 'FAIL' }) $($check.Name)"
-              if (-not $ok) { $failures++ }
-          }
-          if ($failures) { throw "$failures site(s) are missing their pages." }
+        run: ./scripts/Test-DocsArtifacts.ps1

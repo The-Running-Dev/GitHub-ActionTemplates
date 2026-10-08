@@ -198,10 +198,51 @@ Describe 'Resolve-WorkspacePath' {
         @{ Path = 'docs/../../elsewhere' }
         @{ Path = '../work-other/docs' }
     ) {
-        { Resolve-WorkspacePath $Path $Workspace 'source' } | Should -Throw '*source*must be a folder inside the workspace*'
+        { Resolve-WorkspacePath $Path $Workspace 'source' } | Should -Throw '*source*must be inside the workspace*'
     }
 
     It 'rejects an absolute path outside the workspace' {
         { Resolve-WorkspacePath (Join-Path $TestDrive 'other') $Workspace } | Should -Throw '*inside the workspace*'
+    }
+}
+
+Describe 'Split-ActionList' {
+    It 'splits <Name>' -ForEach @(
+        @{ Name = 'lines'; Value = "a.ps1`r`n  b.ps1  `n`nc.ps1`n"; Expected = @('a.ps1', 'b.ps1', 'c.ps1') }
+        @{ Name = 'semicolons'; Value = 'a.ps1; b.ps1;;'; Expected = @('a.ps1', 'b.ps1') }
+    ) {
+        Split-ActionList $Value | Should -Be $Expected
+    }
+
+    It 'returns nothing for <Name>' -ForEach @(
+        @{ Name = 'an empty value'; Value = '' }
+        @{ Name = 'separators only'; Value = " `n ; `r`n" }
+    ) {
+        @(Split-ActionList $Value) | Should -HaveCount 0
+    }
+}
+
+Describe 'Get-PackageManager' {
+    It 'detects <Expected> from <Lockfile>' -ForEach @(
+        @{ Lockfile = 'pnpm-lock.yaml'; Expected = 'pnpm' }
+        @{ Lockfile = 'yarn.lock'; Expected = 'yarn' }
+        @{ Lockfile = 'package-lock.json'; Expected = 'npm' }
+        @{ Lockfile = ''; Expected = 'npm' }
+    ) {
+        $project = New-Item -ItemType Directory -Path (Join-Path $TestDrive "project-$Expected-$([guid]::NewGuid().ToString('n'))")
+        if ($Lockfile) { New-Item -ItemType File -Path (Join-Path $project $Lockfile) | Out-Null }
+
+        Get-PackageManager $project.FullName | Should -Be $Expected
+    }
+
+    It 'prefers the given package manager over the lockfile' {
+        $project = New-Item -ItemType Directory -Path (Join-Path $TestDrive 'given')
+        New-Item -ItemType File -Path (Join-Path $project 'yarn.lock') | Out-Null
+
+        Get-PackageManager $project.FullName 'pnpm' | Should -Be 'pnpm'
+    }
+
+    It 'rejects an unknown package manager' {
+        { Get-PackageManager $TestDrive 'bun' } | Should -Throw "*Unknown package-manager 'bun'*"
     }
 }

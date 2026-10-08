@@ -6,13 +6,23 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `actions/run-scripts`: runs repository scripts by path, in order. Checks every path first and
+  fails on a throw, a non-zero exit or a failing native command.
+- `actions/changelog`: writes a Markdown changelog page from the git history, with pull request
+  links and optional front matter.
+- `actions/node-scripts`: installs a Node project and runs its package.json scripts in order,
+  after building its local dependencies; `browser: true` provides a system Chromium.
+- `docs.yml` inputs `changelog`, `changelog-front-matter`, `node-project`, `node-scripts`,
+  `node-dependencies` and `browser`.
+- `Split-ActionList`, `Get-PackageManager` and `Install-NodePackage` in the shared module.
+
 ### Changed
+- `docs.yml`: **`pre-build` and `post-build` take script paths, one per line, instead of
+  PowerShell code.** A caller that passed code moves it into a script in its repository.
 - `docs-build`: the `template` builder moves the site to `output` when it is set, so a
   repository whose scripts expect `artifacts/docs` keeps them unchanged.
-
-### Fixed
-- `docs.yml`: a failing native command in `pre-build` or `post-build` fails the step even when
-  later commands succeed.
+- This repository's workflows call scripts in `scripts/` instead of running inline code.
 
 ## [0.2.0] - 2026-10-08
 
