@@ -86,15 +86,23 @@ function Invoke-ActionScript {
     $variables = New-ActionEnvironment $Environment
     $variables['GITHUB_OUTPUT'] = $outputFile.FullName
     $variables['GITHUB_STEP_SUMMARY'] = $summaryFile.FullName
-    # Locals rather than parameters inside the script block, which PSScriptAnalyzer cannot follow.
-    $scriptPath = $Script
+    # Same wrapper the runner generates for `shell: pwsh` steps, so a leaked $LASTEXITCODE
+    # fails here as it does in a workflow.
+    $wrapperFile = Join-Path ([System.IO.Path]::GetTempPath()) "ghat-step-$([guid]::NewGuid()).ps1"
+    Set-Content -LiteralPath $wrapperFile -Value @(
+        "`$ErrorActionPreference = 'stop'"
+        "& '$($Script.Replace("'", "''"))'"
+        'if ((Test-Path -LiteralPath variable:\LASTEXITCODE)) { exit $LASTEXITCODE }'
+    )
+    $command = ". '$($wrapperFile.Replace("'", "''"))'"
+    # A local rather than a parameter inside the script block, which PSScriptAnalyzer cannot follow.
     $location = $WorkingDirectory
 
     try {
         $result = Use-Environment $variables {
             Push-Location -LiteralPath $location
             try {
-                $log = & pwsh -NoProfile -NonInteractive -File $scriptPath 2>&1 | Out-String
+                $log = & pwsh -NoProfile -NonInteractive -Command $command 2>&1 | Out-String
                 [pscustomobject]@{ ExitCode = $LASTEXITCODE; Log = $log }
             }
             finally { Pop-Location }
@@ -108,7 +116,7 @@ function Invoke-ActionScript {
         }
     }
     finally {
-        Remove-Item -LiteralPath $outputFile.FullName, $summaryFile.FullName -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $outputFile.FullName, $summaryFile.FullName, $wrapperFile -ErrorAction SilentlyContinue
     }
 }
 

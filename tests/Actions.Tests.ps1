@@ -48,7 +48,10 @@ Describe 'version' {
         }
 
         It 'starts at 0.0.1 without tags' {
-            (Invoke-Version @{ INPUT_STRATEGY = 'tag' } $Untagged).Outputs['version'] | Should -Be '0.0.1-ci.42'
+            $result = Invoke-Version @{ INPUT_STRATEGY = 'tag' } $Untagged
+            $result.Outputs['version'] | Should -Be '0.0.1-ci.42'
+            # The failed `git describe` must not become the step's exit code.
+            $result.ExitCode | Should -Be 0
         }
 
         It 'labels pull request builds with the PR number' {

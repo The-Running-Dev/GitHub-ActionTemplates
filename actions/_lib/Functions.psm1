@@ -266,7 +266,11 @@ function Get-LatestTagVersion {
     }
 
     $tag = git -C $Path describe --tags --abbrev=0 --match "$Prefix[0-9]*" 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $tag) { return $null }
+    $found = $LASTEXITCODE -eq 0 -and $tag
+    # No tag is an expected answer, but the runner's pwsh wrapper ends the step with
+    # `exit $LASTEXITCODE`, so the failed probe must not leak out.
+    $global:LASTEXITCODE = 0
+    if (-not $found) { return $null }
 
     try {
         return ConvertTo-SemVer "$tag".Trim().Substring($Prefix.Length)

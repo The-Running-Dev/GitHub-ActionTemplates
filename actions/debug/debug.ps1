@@ -43,6 +43,9 @@ Write-Group 'Tools' {
             Write-Host ("{0,-7} (not installed)" -f $tool)
         }
     }
+    # A tool that fails to report its version must not fail the step through the runner's
+    # `exit $LASTEXITCODE` wrapper.
+    $global:LASTEXITCODE = 0
 }
 
 Write-Group 'Disk' {
