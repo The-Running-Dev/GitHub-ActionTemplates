@@ -126,3 +126,59 @@ jobs:
           Assert-That ($env:ASSERT_CHECKED -eq 'true') "assert-tag-version checked '$env:ASSERT_CHECKED'"
 
           if ($failures.Count) { throw "$($failures.Count) check(s) failed." }
+
+  docs-template:
+    name: Docs (template)
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: $/.github/workflows/docs.yml
+    with:
+      source: tests/fixtures/docusaurus
+      deploy: false
+      artifact-name: docs-template
+
+  docs-node:
+    name: Docs (node)
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: $/.github/workflows/docs.yml
+    with:
+      source: tests/fixtures/docs-node
+      builder: node
+      deploy: false
+      artifact-name: docs-node
+
+  docs-check:
+    name: Docs artifacts
+    needs: [docs-template, docs-node]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: docs-*
+          path: artifacts
+
+      - name: Check the sites
+        shell: pwsh
+        run: |
+          $failures = 0
+          foreach ($check in @(
+              @{ Name = 'docs-template'; Marker = 'docs-build-fixture-marker'; Page = 'second/index.html' }
+              @{ Name = 'docs-node'; Marker = 'docs-node-fixture-marker'; Page = 'index.html' }
+          )) {
+              $site = Join-Path 'sites' $check.Name
+              New-Item -ItemType Directory -Path $site -Force | Out-Null
+              tar -xf (Join-Path 'artifacts' $check.Name 'artifact.tar') -C $site
+              if ($LASTEXITCODE -ne 0) { throw "Extracting $($check.Name) failed." }
+
+              $index = Join-Path $site 'index.html'
+              $ok = (Test-Path $index) -and (Get-Content $index -Raw).Contains($check.Marker) -and (Test-Path (Join-Path $site $check.Page))
+              Write-Host "$(if ($ok) { 'ok  ' } else { 'FAIL' }) $($check.Name)"
+              if (-not $ok) { $failures++ }
+          }
+          if ($failures) { throw "$failures site(s) are missing their pages." }

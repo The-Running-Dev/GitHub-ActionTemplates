@@ -1,0 +1,7 @@
+{
+  "name": "docs-node-fixture",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}

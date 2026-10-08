@@ -1,0 +1,166 @@
+name: Docs
+
+# Builds a Docusaurus site in the build-agent image and deploys it to GitHub Pages from the
+# default branch and tags. Pull requests and other branches only build.
+#
+# The caller grants `contents: read`, `pages: write` and `id-token: write`, and the repository's
+# Pages source is set to "GitHub Actions". See docs/docs.md.
+
+on:
+  workflow_call:
+    inputs:
+      source:
+        description: Documentation folder, relative to the repository root.
+        type: string
+        default: docs
+      builder:
+        description: '`template` (bundled Docusaurus template) or `node` (the folder''s own package.json).'
+        type: string
+        default: template
+      template:
+        description: Template git URL for the `template` builder, optionally `<url>#<branch>`. Empty uses the bundled template.
+        type: string
+        default: ''
+      package-manager:
+        description: '`npm`, `pnpm` or `yarn`. Empty detects it from the lockfile.'
+        type: string
+        default: ''
+      build-command:
+        description: package.json script the `node` builder runs.
+        type: string
+        default: build
+      output:
+        description: Folder the build writes the site to. Defaults to `<source>/build`.
+        type: string
+        default: ''
+      title:
+        description: Site title for the bundled template. Defaults to the repository name.
+        type: string
+        default: ''
+      pre-build:
+        description: PowerShell run from the repository root before the build.
+        type: string
+        default: ''
+      post-build:
+        description: PowerShell run from the repository root after the build.
+        type: string
+        default: ''
+      deploy:
+        description: Deploy to GitHub Pages from the default branch and tags. `false` only builds.
+        type: boolean
+        default: true
+      image:
+        description: Container image for the build job.
+        type: string
+        default: ghcr.io/the-running-dev/build-agent:2.0.0-28@sha256:a716616f7399b09ee16cba101ddd1554080936ad13b438c6116cf3a44e0f88d7
+      runs-on:
+        description: Runner label for the build job. It must run Linux containers.
+        type: string
+        default: ubuntu-latest
+      fetch-depth:
+        description: Commits to fetch; 0 fetches all history (for last-updated dates from git).
+        type: number
+        default: 1
+      submodules:
+        description: '`true`, `recursive` or `false`, as for actions/checkout.'
+        type: string
+        default: 'false'
+      artifact-name:
+        description: Name of the Pages artifact.
+        type: string
+        default: github-pages
+    outputs:
+      page-url:
+        description: URL of the deployed site, empty when it was not deployed.
+        value: ${{ jobs.deploy.outputs.page-url }}
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: read
+    # The default is pinned by digest; a caller that overrides it owns that pin.
+    container:
+      image: ${{ inputs.image }} # zizmor: ignore[unpinned-images]
+    outputs:
+      should-publish: ${{ steps.context.outputs.should-publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: Context
+        id: context
+        uses: $/actions/context
+
+      # Only when deploying: it fails until Pages is enabled for the repository.
+      - name: Pages settings
+        id: pages
+        if: inputs.deploy && steps.context.outputs.should-publish == 'true'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Pre-build
+        if: inputs.pre-build != ''
+        shell: pwsh
+        env:
+          GHAT_HOOK: ${{ inputs.pre-build }}
+        run: '& ([scriptblock]::Create($env:GHAT_HOOK))'
+
+      - name: Build
+        id: build
+        uses: $/actions/docs-build
+        env:
+          DOCS_TITLE: ${{ inputs.title }}
+          DOCS_URL: ${{ steps.pages.outputs.origin }}
+          DOCS_BASE_URL: ${{ steps.pages.outputs.base_path }}
+        with:
+          source: ${{ inputs.source }}
+          builder: ${{ inputs.builder }}
+          template: ${{ inputs.template }}
+          package-manager: ${{ inputs.package-manager }}
+          build-command: ${{ inputs.build-command }}
+          output: ${{ inputs.output }}
+
+      - name: Post-build
+        if: inputs.post-build != ''
+        shell: pwsh
+        env:
+          GHAT_HOOK: ${{ inputs.post-build }}
+        run: '& ([scriptblock]::Create($env:GHAT_HOOK))'
+
+      - name: Upload
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ steps.build.outputs.path }}
+          name: ${{ inputs.artifact-name }}
+
+  deploy:
+    name: Deploy
+    needs: build
+    if: inputs.deploy && needs.build.outputs.should-publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: docs-pages-deploy
+      cancel-in-progress: false
+    outputs:
+      page-url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: ${{ inputs.artifact-name }}

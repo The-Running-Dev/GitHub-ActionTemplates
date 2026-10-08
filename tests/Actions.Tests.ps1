@@ -227,3 +227,94 @@ Describe 'debug' {
         $result.Log | Should -Match '::group::Tools'
     }
 }
+
+Describe 'docs-build' {
+    BeforeAll {
+        $script:Script = Join-Path $Actions 'docs-build' 'docs-build.ps1'
+
+        # A workspace with the fixture copied to <workspace>/docs, so builds never write into tests/.
+        function New-DocsWorkspace([string] $Fixture) {
+            $workspace = Join-Path $TestDrive "workspace-$([guid]::NewGuid().ToString('n'))"
+            New-Item -ItemType Directory -Path $workspace | Out-Null
+            Copy-Item -LiteralPath (Join-Path $Fixtures $Fixture) -Destination (Join-Path $workspace 'docs') -Recurse
+            return $workspace
+        }
+
+        function Invoke-DocsBuild([string] $Workspace, [hashtable] $Environment = @{}) {
+            $temp = Join-Path $TestDrive "temp-$([guid]::NewGuid().ToString('n'))"
+            New-Item -ItemType Directory -Path $temp | Out-Null
+            $Environment['GITHUB_WORKSPACE'] = $Workspace
+            $Environment['RUNNER_TEMP'] = $temp
+            Invoke-ActionScript $Script -Environment $Environment -WorkingDirectory $Workspace
+        }
+    }
+
+    Context 'node builder' {
+        It 'installs and builds the folder''s own project' {
+            $workspace = New-DocsWorkspace 'docs-node'
+
+            $result = Invoke-DocsBuild $workspace @{ INPUT_BUILDER = 'node' }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Log
+            $result.Outputs['path'] | Should -Be 'docs/build'
+            Join-Path $workspace 'docs' 'build' 'index.html' | Should -FileContentMatch 'docs-node-fixture-marker'
+            $result.Summary | Should -Match '`node` builder: 1 files'
+        }
+
+        It 'fails when the build does not write index.html to the output folder' {
+            $workspace = New-DocsWorkspace 'docs-node'
+
+            $result = Invoke-DocsBuild $workspace @{ INPUT_BUILDER = 'node'; INPUT_OUTPUT = 'docs/dist' }
+
+            $result.ExitCode | Should -Not -Be 0
+            $result.Log | Should -Match ([regex]::Escape("did not produce 'docs/dist/index.html'"))
+        }
+    }
+
+    Context 'template builder' {
+        It 'runs build node-template with the bundled template' {
+            $workspace = New-DocsWorkspace 'docusaurus'
+            $log = Join-Path $TestDrive 'stub-log'
+            New-Item -ItemType Directory -Path $log | Out-Null
+            $stub = Join-Path $Fixtures 'build-agent-stub'
+
+            $result = Invoke-DocsBuild $workspace @{
+                PATH                  = "$stub$([System.IO.Path]::PathSeparator)$env:PATH"
+                STUB_LOG              = $log
+                INPUT_PACKAGE_MANAGER = 'pnpm'
+            }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Log
+            $result.Outputs['path'] | Should -Be 'docs/build'
+            $arguments = @(Get-Content (Join-Path $log 'args.txt'))
+            $arguments[0] | Should -Be 'node-template'
+            $arguments[$arguments.IndexOf('-WorkingDir') + 1] | Should -Be ([System.IO.Path]::GetFullPath($workspace))
+            $arguments[$arguments.IndexOf('-AppDir') + 1] | Should -Be 'docs'
+            $arguments[$arguments.IndexOf('-PackageManager') + 1] | Should -Be 'pnpm'
+            $arguments[$arguments.IndexOf('-NodeTemplateRepositoryUrl') + 1] | Should -BeLike 'file:///*'
+            $template = @(Get-Content (Join-Path $log 'template.txt'))
+            $template | Should -Contain 'docusaurus.config.ts'
+            $template | Should -Contain 'pnpm-lock.yaml'
+        }
+
+        It 'explains where the build command comes from when it is missing' -Skip:([bool] (Get-Command build -ErrorAction SilentlyContinue)) {
+            $result = Invoke-DocsBuild (New-DocsWorkspace 'docusaurus')
+
+            $result.ExitCode | Should -Not -Be 0
+            $result.Log | Should -Match 'build-agent'
+        }
+    }
+
+    It 'rejects <Name>' -ForEach @(
+        @{ Name = 'an unknown builder'; Environment = @{ INPUT_BUILDER = 'hugo' }; Message = "Unknown builder 'hugo'" }
+        @{ Name = 'an unknown package manager'; Environment = @{ INPUT_PACKAGE_MANAGER = 'bun' }; Message = "Unknown package-manager 'bun'" }
+        @{ Name = 'a source outside the workspace'; Environment = @{ INPUT_SOURCE = '../elsewhere' }; Message = "source '../elsewhere' must be a folder inside the workspace" }
+        @{ Name = 'a missing source'; Environment = @{ INPUT_SOURCE = 'missing' }; Message = "source folder 'missing' does not exist" }
+        @{ Name = 'the source as the output'; Environment = @{ INPUT_OUTPUT = 'docs' }; Message = 'must not be the source folder' }
+    ) {
+        $result = Invoke-DocsBuild (New-DocsWorkspace 'docs-node') $Environment
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Log | Should -Match ([regex]::Escape($Message))
+    }
+}

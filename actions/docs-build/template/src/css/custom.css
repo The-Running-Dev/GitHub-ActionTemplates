@@ -1,0 +1,24 @@
+/* Default theme colours. A documentation folder with its own src/css/custom.css replaces this file. */
+
+:root {
+  --ifm-color-primary: #2e6bd8;
+  --ifm-color-primary-dark: #2560c8;
+  --ifm-color-primary-darker: #235bbd;
+  --ifm-color-primary-darkest: #1d4b9b;
+  --ifm-color-primary-light: #4479dc;
+  --ifm-color-primary-lighter: #5082de;
+  --ifm-color-primary-lightest: #7099e5;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #6b9cf0;
+  --ifm-color-primary-dark: #4f88ed;
+  --ifm-color-primary-darker: #417eec;
+  --ifm-color-primary-darkest: #1a62e2;
+  --ifm-color-primary-light: #87b0f3;
+  --ifm-color-primary-lighter: #95baf4;
+  --ifm-color-primary-lightest: #bed5f8;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}

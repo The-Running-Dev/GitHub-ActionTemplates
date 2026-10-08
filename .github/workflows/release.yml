@@ -22,8 +22,11 @@ jobs:
     uses: $/.github/workflows/lint.yml
 
   self-test:
+    # The docs self-test calls docs.yml, whose deploy job needs these even when it is skipped.
     permissions:
       contents: read
+      pages: write
+      id-token: write
     uses: $/.github/workflows/self-test.yml
 
   release:
