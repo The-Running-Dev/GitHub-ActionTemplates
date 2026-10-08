@@ -14,3 +14,17 @@ updates:
         patterns: ['*']
     commit-message:
       prefix: ci
+
+  # The bundled docs template. The build-agent image in docs.yml is pinned by digest and
+  # bumped by hand: Dependabot does not update workflow input defaults.
+  - package-ecosystem: npm
+    directory: /actions/docs-build/template
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      docusaurus:
+        patterns: ['*']
+    commit-message:
+      prefix: deps

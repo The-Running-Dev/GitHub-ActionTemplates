@@ -1,0 +1,50 @@
+name: Build documentation
+description: Build a Docusaurus documentation site with the bundled template (in the build-agent image) or the folder's own Node project.
+author: The-Running-Dev
+
+inputs:
+  source:
+    description: Documentation folder, relative to the workspace.
+    required: false
+    default: docs
+  builder:
+    description: >-
+      `template` merges the folder into a Docusaurus template and builds it with `build node-template`
+      (needs the build-agent image). `node` installs and builds the folder's own package.json.
+    required: false
+    default: template
+  template:
+    description: Template git URL for the `template` builder, optionally `<url>#<branch>`. Empty uses the bundled template.
+    required: false
+    default: ''
+  package-manager:
+    description: '`npm`, `pnpm` or `yarn`. Empty detects it from the lockfile.'
+    required: false
+    default: ''
+  build-command:
+    description: package.json script the `node` builder runs.
+    required: false
+    default: build
+  output:
+    description: Folder the build writes the site to, relative to the workspace. Defaults to `<source>/build`.
+    required: false
+    default: ''
+
+outputs:
+  path:
+    description: Built site folder, relative to the workspace.
+    value: ${{ steps.build.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - id: build
+      shell: pwsh
+      env:
+        INPUT_SOURCE: ${{ inputs.source }}
+        INPUT_BUILDER: ${{ inputs.builder }}
+        INPUT_TEMPLATE: ${{ inputs.template }}
+        INPUT_PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        INPUT_BUILD_COMMAND: ${{ inputs.build-command }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH docs-build.ps1)'

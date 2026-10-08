@@ -1,0 +1,13 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  docs:
+    permissions: { contents: read, pages: write, id-token: write }
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v0

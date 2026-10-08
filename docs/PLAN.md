@@ -12,7 +12,7 @@ consumers and the proving ground, not the design target.
 | Scope | Generic public library; SubZeroDev conventions are inputs, never defaults |
 | Location | Rebuild this repository in place (keep name + history, remove current scaffolding) |
 | Consumer pinning | Moving major tag `@v1`; immutable `v1.x.y` tags also published |
-| Docs builder image | Built and published from this repository |
+| Docs builder | Build-agent image v2 (`ghcr.io/the-running-dev/build-agent`, pinned by digest) runs `build node-template` with a Docusaurus template bundled in `actions/docs-build/template`; no separate docs image |
 
 ## What carries over from Azure DevOps
 
@@ -69,15 +69,12 @@ environment list in Phase 7).
     _build-*.yml  _publish-*.yml                          # internal
     self-test.yml   # runs every entry point against tests/fixtures
     lint.yml        # actionlint + zizmor
-    release.yml     # semver tag, CHANGELOG, move v1, publish docs-builder image
-    docs-builder-image.yml
+    release.yml     # semver tag, CHANGELOG, move v1
   dependabot.yml    # github-actions + docker, weekly, grouped
 actions/
   _lib/Functions.psm1
-  version/  context/  debug/  assert-tag-version/  coverage-gate/  test-report/
+  version/  context/  debug/  assert-tag-version/  docs-build/  coverage-gate/  test-report/
   pwsh-check/  nuget-feed/  webhook-deploy/  branch-tip-gate/  image-gate/
-images/
-  docs-builder/     # Docusaurus builder image (moved from SubZeroDev.Workspace/docs-template)
 tests/fixtures/
   dotnet-lib/  npm-lib/  node-app/  pwsh-module/  docusaurus/  dockerfile/
 examples/<archetype>.yml
@@ -90,7 +87,7 @@ Ordered by demand observed across the SubZeroDev repositories.
 
 | Workflow | Does | Key inputs | First consumers |
 |---|---|---|---|
-| `docs.yml` | Build docs (builder image or plain Node) → test → Pages on default branch | `source`, `builder` (`image`/`node`), `image`, `pre-build`, `post-build`, `test-script`, `merge-site` | PluginContract, Specs, SunTrap, Plugins.GitHub, Blog, WinGet, Platform, GameEngine, PSGenerator, Workspace |
+| `docs.yml` | Build docs (bundled template or the folder's own Node project) in the build-agent container → Pages on default branch and tags | `source`, `builder` (`template`/`node`), `template`, `image`, `title`, `pre-build`, `post-build` (covers the old `test-script`) | PluginContract, Specs, SunTrap, Plugins.GitHub, Blog, WinGet, Platform, GameEngine, PSGenerator, Workspace |
 | `container.yml` | Build → smoke test → save + digest → push only if still branch tip; tags `sha`/`latest`/semver; optional multi-arch, cosign, attestation; optional webhook redeploy + health check | `context`, `dockerfile`, `target`, `image`, `registry`, `platforms`, `smoke-command`, `sign`, `deploy-webhook-secret`, `health-url` | com, SkyNetHR, Adventures, Licensing, Blog, PSGenerator, GameEngine, Plugins.GitHub |
 | `node-ci.yml` | OS × Node matrix; install; configurable script list (`typecheck`, `lint`, `test`, …); optional clean-tree check; aggregated required check | `node-versions`, `os`, `package-manager`, `scripts`, `setup-script`, `check-clean`, `submodules` | AgentKit, Git, GameOfLife, Adventures.Content, LandingPage, Data.Json |
 | `pwsh-ci.yml` | Parse-check all `*.ps1`, Pester, optional coverage gate, test report | `pester-version`, `paths`, `minimum-coverage`, `os` | Data.Json, GameEngine, SkyNetHR, GameOfLife, Workspace, PSGenerator |
@@ -104,14 +101,19 @@ Event semantics are identical across archetypes:
 - push to default branch → build + test + prerelease publish / deploy.
 - tag `v*` → stable release (tag must equal manifest version).
 
-## Docs builder image
+## Docs builder
 
-- Move `SubZeroDev.Workspace/docs-template` into `images/docs-builder/`, made generic
-  (site title, org, badges, theme from the consuming repo's config, no SubZeroDev defaults).
-- Exclude workspace artifacts: `cookies.txt`, `storage/`, `artifacts/`, `.docusaurus/`, `.build/`.
-- Publish `ghcr.io/the-running-dev/docs-builder:{v1, v1.x.y, sha}`; `release.yml` updates the
-  digest pin in `docs.yml` so `@v1` consumers get a matching image.
-- Keep `docs-template:latest` as an alias during migration, then deprecate it.
+- The build job runs in the build-agent image v2, which has Node, pnpm, PowerShell, git and
+  `build node-template` (clone a template, overlay the docs folder, install, `build:prod`).
+- The generic Docusaurus template from `SubZeroDev.Workspace/docs-template` lives in
+  `actions/docs-build/template` (title, URL and base URL from the environment and Pages
+  settings; no SubZeroDev defaults). The action turns it into a local git repository for
+  `build node-template`; `template:` points at another template repository instead.
+- Workspace artifacts are never copied: `cookies.txt`, `storage/`, `api/`, `artifacts/`,
+  `.docusaurus/`, `.build/`.
+- The image digest in `docs.yml` is bumped by hand; Dependabot covers the template's npm packages.
+- `merge-site` (merging another site into the output) is deferred until a consumer needs it.
+- `docs-template:latest` stays available to unmigrated repositories, then is deprecated.
 
 ## Quality bar (public library)
 
@@ -127,7 +129,7 @@ Event semantics are identical across archetypes:
 | # | Phase | Work | Exit criteria |
 |---|---|---|---|
 | 1 | Foundation | Remove `templates/`, `.github/templates/`, example-workflows; new layout; `lint.yml`, `release.yml`, `dependabot.yml`; actions `debug`, `version`, `assert-tag-version`, `context` | `v0.1.0` released; lint + self-test green |
-| 2 | Docs (pilot) | `images/docs-builder`, `docs-builder-image.yml`, `docs.yml`, fixture; migrate PluginContract + Specs, then remaining 8 | 10 repos on `docs.yml@v1`, each ≤ 15 lines |
+| 2 | Docs (pilot) | `docs-build` action + bundled template on the build-agent image, `docs.yml`, fixtures; migrate PluginContract + Specs, then remaining 8 | 10 repos on `docs.yml@v1`, each ≤ 15 lines |
 | 3 | Node + PowerShell | `node-ci.yml`, `pwsh-ci.yml`, `pwsh-check`, `coverage-gate`, `test-report`, `npm-package.yml`; give ServiceContract a pipeline | Node/pwsh repos migrated |
 | 4 | Containers | `container.yml`, `image-gate`, `branch-tip-gate`, `webhook-deploy` | com, SkyNetHR, Adventures, Licensing, Blog migrated |
 | 5 | .NET | `dotnet.yml`, `nuget-feed`; GitVersion strategy in `version` | Platform, Licensing, Platform.Updater, Cleaner migrated; HotCorners/WinGet use it for CI |
@@ -139,6 +141,6 @@ Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-loc
 ## Open questions
 
 1. Default runner OS — `ubuntu-latest` everywhere with `os` input, or `windows-latest` default for `dotnet.yml` (Cleaner/HotCorners/WinGet need Windows)?
-2. Docs builder: keep the PowerShell entry script (`docs-build.ps1`) or move to a Node CLI so the image doesn't need pwsh?
+2. ~~Docs builder: PowerShell or a Node CLI?~~ Resolved: PowerShell, which the build-agent image already has.
 3. Starter workflows: add a `workflow-templates/` set to a `The-Running-Dev/.github` repository for the "New workflow" UI?
 4. Claude review: include it in the public library, or keep it as a SubZeroDev-only shared workflow?

@@ -173,3 +173,35 @@ Describe 'Get-LatestTagVersion' {
         Get-LatestTagVersion -Path $repo | Should -BeNullOrEmpty
     }
 }
+
+Describe 'Resolve-WorkspacePath' {
+    BeforeAll {
+        $script:Workspace = Join-Path $TestDrive 'work'
+    }
+
+    It 'resolves <Path> inside the workspace' -ForEach @(
+        @{ Path = 'docs'; Expected = 'docs' }
+        @{ Path = 'docs/site/'; Expected = 'docs/site' }
+        @{ Path = './a/../docs'; Expected = 'docs' }
+    ) {
+        Resolve-WorkspacePath $Path $Workspace | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $Workspace $Expected)))
+    }
+
+    It 'accepts an absolute path inside the workspace' {
+        $inside = Join-Path $Workspace 'docs'
+        Resolve-WorkspacePath $inside $Workspace | Should -Be ([System.IO.Path]::GetFullPath($inside))
+    }
+
+    It 'rejects <Path>' -ForEach @(
+        @{ Path = '.' }
+        @{ Path = '../elsewhere' }
+        @{ Path = 'docs/../../elsewhere' }
+        @{ Path = '../work-other/docs' }
+    ) {
+        { Resolve-WorkspacePath $Path $Workspace 'source' } | Should -Throw '*source*must be a folder inside the workspace*'
+    }
+
+    It 'rejects an absolute path outside the workspace' {
+        { Resolve-WorkspacePath (Join-Path $TestDrive 'other') $Workspace } | Should -Throw '*inside the workspace*'
+    }
+}

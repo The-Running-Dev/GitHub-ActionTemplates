@@ -281,4 +281,30 @@ function Get-LatestTagVersion {
     }
 }
 
+function Resolve-WorkspacePath {
+    <#
+    .SYNOPSIS
+    Resolves a path relative to the workspace and fails when it is not strictly inside it.
+    Inputs come from callers, so `..`, absolute paths elsewhere and the workspace root itself
+    are rejected.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string] $Path,
+        [Parameter(Mandatory)][string] $Workspace,
+        [string] $Name = 'path'
+    )
+
+    $root = [System.IO.Path]::TrimEndingDirectorySeparator([System.IO.Path]::GetFullPath($Workspace))
+    $full = [System.IO.Path]::TrimEndingDirectorySeparator([System.IO.Path]::GetFullPath($Path, $root))
+    $comparison = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+
+    if (-not $full.StartsWith($root + [System.IO.Path]::DirectorySeparatorChar, $comparison)) {
+        throw "The $Name '$Path' must be a folder inside the workspace '$root'."
+    }
+
+    return $full
+}
+
 Export-ModuleMember -Function *-*

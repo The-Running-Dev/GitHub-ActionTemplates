@@ -1,0 +1,37 @@
+{
+  "name": "docs-site",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Docusaurus site that the docs-build action lays under a repository's documentation folder.",
+  "license": "MIT",
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "build:prod": "docusaurus build --out-dir build",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/plugin-content-docs": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@docusaurus/theme-classic": "3.10.2",
+    "@docusaurus/theme-common": "3.10.2",
+    "@docusaurus/theme-mermaid": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.55.3",
+    "@mdx-js/react": "3.1.1",
+    "@mermaid-js/layout-elk": "0.1.9",
+    "clsx": "2.1.1",
+    "prism-react-renderer": "2.4.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/types": "3.10.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

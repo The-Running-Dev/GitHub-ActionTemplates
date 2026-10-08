@@ -5,9 +5,24 @@ publishing projects. The goal is that a consuming repository's workflow is a few
 call a template, with every decision (version, publish or not, image name) made the same way
 in every repository.
 
-> **Status: 0.x.** The building-block actions below are usable now. The reusable workflows
-> (npm, .NET, PowerShell module, Docker image, docs site) arrive in later 0.x releases, see
+> **Status: 0.x.** The workflows and actions below are usable now. More reusable workflows
+> (npm, .NET, PowerShell module, Docker image) arrive in later 0.x releases, see
 > [docs/PLAN.md](docs/PLAN.md). Inputs may still change before `v1.0.0`.
+
+## Workflows
+
+| Workflow | What it does |
+|---|---|
+| [`docs.yml`](docs/docs.md) | Builds a Docusaurus site and deploys it to GitHub Pages from the default branch and tags. |
+
+```yaml
+jobs:
+  docs:
+    permissions: { contents: read, pages: write, id-token: write }
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v0
+```
+
+Complete caller workflows are in [examples/](examples).
 
 ## Actions
 
@@ -17,8 +32,10 @@ in every repository.
 | [`assert-tag-version`](actions/assert-tag-version/README.md) | Fails a tag build when the tag and the manifest version differ. |
 | [`context`](actions/context/README.md) | Normalises the run context: branch, slug, PR, tag, publish decision, image name. |
 | [`debug`](actions/debug/README.md) | Prints the run context, runner, tool versions, disk space and workspace. |
+| [`docs-build`](actions/docs-build/README.md) | Builds a Docusaurus site from a bundled template or the folder's own Node project. |
 
-The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners.
+The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners
+(`docs-build` with the `template` builder runs in the build-agent container).
 
 ```yaml
 jobs:
@@ -78,6 +95,7 @@ public issue.
 
 ## Documentation
 
+- [docs/docs.md](docs/docs.md): the documentation workflow.
 - [docs/conventions.md](docs/conventions.md): event semantics, version strategies, naming and
   security rules shared by every template.
 - [docs/PLAN.md](docs/PLAN.md): the roadmap.

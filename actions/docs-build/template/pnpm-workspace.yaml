@@ -1,0 +1,4 @@
+# pnpm refuses to install while a dependency's build script is neither allowed nor denied.
+# core-js's postinstall only prints a funding message.
+allowBuilds:
+  core-js: false
