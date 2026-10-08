@@ -421,7 +421,8 @@ Describe 'run-scripts' {
         $result = Invoke-RunScript (New-ScriptWorkspace @{}) $Scripts
 
         $result.ExitCode | Should -Not -Be 0
-        $result.Log | Should -Match ([regex]::Escape($Message))
+        # The error view wraps long messages at the console width onto `| ` continuation lines.
+        ($result.Log -replace '\s*\r?\n\s*\|\s*', ' ') | Should -Match ([regex]::Escape($Message))
     }
 }
 
