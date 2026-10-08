@@ -6,6 +6,14 @@ section for its version.
 
 ## [Unreleased]
 
+### Changed
+- `docs-build`: the `template` builder moves the site to `output` when it is set, so a
+  repository whose scripts expect `artifacts/docs` keeps them unchanged.
+
+### Fixed
+- `docs.yml`: a failing native command in `pre-build` or `post-build` fails the step even when
+  later commands succeed.
+
 ## [0.2.0] - 2026-10-08
 
 ### Added

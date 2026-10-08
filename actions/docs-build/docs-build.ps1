@@ -62,6 +62,15 @@ if ($builder -eq 'template') {
 
     Write-Host "Building '$source' with the $templateName"
     build @arguments
+
+    # The template always builds to <source>/build; another output folder gets the site moved there.
+    $templateOutput = Join-Path $sourcePath 'build'
+    if ($outputPath -ne $templateOutput -and (Test-Path -LiteralPath $templateOutput -PathType Container)) {
+        if (Test-Path -LiteralPath $outputPath) { Remove-Item -LiteralPath $outputPath -Recurse -Force }
+        New-Item -ItemType Directory -Path (Split-Path $outputPath) -Force | Out-Null
+        Move-Item -LiteralPath $templateOutput -Destination $outputPath
+        Write-Host "Moved the site to '$(Get-RelativePath $outputPath)'"
+    }
 }
 else {
     Push-Location -LiteralPath $sourcePath

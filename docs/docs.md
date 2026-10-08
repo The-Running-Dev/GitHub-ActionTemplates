@@ -60,10 +60,10 @@ listed in [`actions/docs-build/template/package.json`](../actions/docs-build/tem
 | `template` | bundled | Template git URL, optionally `<url>#<branch>`. The repository must be readable without credentials. |
 | `package-manager` | from the lockfile | `npm`, `pnpm` or `yarn`. |
 | `build-command` | `build` | package.json script for the `node` builder. |
-| `output` | `<source>/build` | Folder the build writes the site to. |
+| `output` | `<source>/build` | Folder the site ends up in. The `template` builder moves its site here, for example `artifacts/docs` for scripts that expect it there. |
 | `title` | repository name | Site title for the bundled template. |
-| `pre-build` | | PowerShell run from the repository root before the build, for example to generate pages. |
-| `post-build` | | PowerShell run from the repository root after the build, for example a link check. |
+| `pre-build` | | PowerShell run from the repository root before the build, for example to generate pages. A failing command stops it. |
+| `post-build` | | PowerShell run from the repository root after the build, for example a link check. A failing command stops it. |
 | `deploy` | `true` | `false` only builds and uploads the artifact. |
 | `image` | build-agent, by digest | Container image for the build job. It needs PowerShell 7, git and Node, and `build` for the `template` builder. |
 | `runs-on` | `ubuntu-latest` | Runner for the build job; it must run Linux containers. |

@@ -297,6 +297,27 @@ Describe 'docs-build' {
             $template | Should -Contain 'pnpm-lock.yaml'
         }
 
+        It 'moves the site to the output folder' {
+            $workspace = New-DocsWorkspace 'docusaurus'
+            $log = Join-Path $TestDrive 'stub-log-output'
+            New-Item -ItemType Directory -Path $log | Out-Null
+            $stale = Join-Path $workspace 'artifacts' 'docs'
+            New-Item -ItemType Directory -Path $stale -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $stale 'stale.html') -Value 'stale'
+
+            $result = Invoke-DocsBuild $workspace @{
+                PATH         = "$(Join-Path $Fixtures 'build-agent-stub')$([System.IO.Path]::PathSeparator)$env:PATH"
+                STUB_LOG     = $log
+                INPUT_OUTPUT = 'artifacts/docs'
+            }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Log
+            $result.Outputs['path'] | Should -Be 'artifacts/docs'
+            Join-Path $stale 'index.html' | Should -FileContentMatch 'stub site'
+            Join-Path $stale 'stale.html' | Should -Not -Exist
+            Join-Path $workspace 'docs' 'build' | Should -Not -Exist
+        }
+
         It 'explains where the build command comes from when it is missing' -Skip:([bool] (Get-Command build -ErrorAction SilentlyContinue)) {
             $result = Invoke-DocsBuild (New-DocsWorkspace 'docusaurus')
 

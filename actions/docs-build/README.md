@@ -60,7 +60,7 @@ builder for those.
 | `template` | bundled | Template git URL for the `template` builder, optionally `<url>#<branch>`. |
 | `package-manager` | from the lockfile | `npm`, `pnpm` or `yarn`. |
 | `build-command` | `build` | package.json script the `node` builder runs. |
-| `output` | `<source>/build` | Folder the build writes the site to. The action fails if it has no `index.html`. |
+| `output` | `<source>/build` | Folder the site ends up in. The `template` builder moves its site here; the `node` builder must write it here. The action fails if it has no `index.html`. |
 
 `source` and `output` must be inside the workspace.
 

@@ -30,7 +30,7 @@ on:
         type: string
         default: build
       output:
-        description: Folder the build writes the site to. Defaults to `<source>/build`.
+        description: Folder the site ends up in. Defaults to `<source>/build`; the `template` builder moves its site here.
         type: string
         default: ''
       title:
@@ -111,7 +111,7 @@ jobs:
         shell: pwsh
         env:
           GHAT_HOOK: ${{ inputs.pre-build }}
-        run: '& ([scriptblock]::Create($env:GHAT_HOOK))'
+        run: '$PSNativeCommandUseErrorActionPreference = $true; & ([scriptblock]::Create($env:GHAT_HOOK))'
 
       - name: Build
         id: build
@@ -133,7 +133,7 @@ jobs:
         shell: pwsh
         env:
           GHAT_HOOK: ${{ inputs.post-build }}
-        run: '& ([scriptblock]::Create($env:GHAT_HOOK))'
+        run: '$PSNativeCommandUseErrorActionPreference = $true; & ([scriptblock]::Create($env:GHAT_HOOK))'
 
       - name: Upload
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
