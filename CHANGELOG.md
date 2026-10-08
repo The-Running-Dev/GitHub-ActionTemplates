@@ -6,6 +6,32 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `node-ci.yml` reusable workflow: installs a Node project and runs its scripts on an OS × Node
+  matrix, then reports test results, gates coverage, optionally checks for a clean tree and
+  uploads artifacts. A `Result` job gives branch protection one stable check.
+- `pwsh-ci.yml` reusable workflow: syntax check and optional PSScriptAnalyzer, Pester with
+  coverage on each OS, test report, coverage gate and a `Result` job.
+- `npm-package.yml` reusable workflow: builds, tests and packs once with the package.json
+  version (tag must match), publishes the tarball from tags to npmjs (trusted publishing,
+  token) or GitHub Packages with provenance, optionally publishes default-branch prereleases
+  under `next`, and creates the GitHub release with the CHANGELOG notes and the tarball.
+- Actions `pwsh-check`, `pester` (Pester 5 or 6), `test-report`, `coverage-gate`,
+  `check-clean`, `needs-gate`, `npm-pack`, `npm-publish` and `github-release`.
+- `node-scripts` input `setup`: package.json scripts run before the install. pnpm and yarn are
+  enabled through corepack when the runner does not have them.
+- Shared module: `Install-PowerShellModule`, `Find-WorkspaceFile`, `Read-XmlFile`,
+  `Get-CoverageReport`, `Get-TestResult`, `Get-ChangelogSection`, `Get-TarballManifest`,
+  `Write-ActionAnnotation` and `Format-MarkdownCell`.
+- Self-test runs of the three workflows against the `node-app`, `pwsh-module` and `npm-lib`
+  fixtures, with their artifacts checked by `scripts/Test-CiArtifacts.ps1`.
+- `tests/Metadata.Tests.ps1`: every `action.yml` is checked for unquoted values YAML would
+  misread, inputs it never uses, and `INPUT_*` variables mapped to the wrong input.
+
+### Changed
+- The release workflow's self-test job is granted `contents: write` and `packages: write`, which
+  `npm-package.yml` asks for.
+
 ## [0.3.0] - 2026-10-08
 
 ### Added

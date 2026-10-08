@@ -1,0 +1,55 @@
+name: Coverage gate
+description: Read Cobertura, JaCoCo or LCOV coverage reports, summarise line coverage, and fail when it is below a minimum.
+author: The-Running-Dev
+
+inputs:
+  reports:
+    description: >-
+      Coverage report files, relative to `working-directory`, one per line. Wildcards are allowed and `**/` searches
+      folders. The default finds the usual report names anywhere under `working-directory`.
+    required: false
+    default: |
+      **/coverage.cobertura.xml
+      **/cobertura-coverage.xml
+      **/cobertura.xml
+      **/jacoco.xml
+      **/pester-coverage.xml
+      **/lcov.info
+  minimum:
+    description: Minimum line coverage percentage (0-100). `0` only reports.
+    required: false
+    default: '0'
+  title:
+    description: Heading of the job summary section.
+    required: false
+    default: Coverage
+  working-directory:
+    description: Folder the paths are relative to, relative to the workspace.
+    required: false
+    default: .
+
+outputs:
+  coverage:
+    description: Combined line coverage percentage, rounded to two decimals (empty when no report was found).
+    value: ${{ steps.gate.outputs.coverage }}
+  covered:
+    description: Covered lines across all reports.
+    value: ${{ steps.gate.outputs.covered }}
+  total:
+    description: Coverable lines across all reports.
+    value: ${{ steps.gate.outputs.total }}
+  passed:
+    description: '`true` when coverage meets the minimum.'
+    value: ${{ steps.gate.outputs.passed }}
+
+runs:
+  using: composite
+  steps:
+    - id: gate
+      shell: pwsh
+      env:
+        INPUT_REPORTS: ${{ inputs.reports }}
+        INPUT_MINIMUM: ${{ inputs.minimum }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH coverage-gate.ps1)'

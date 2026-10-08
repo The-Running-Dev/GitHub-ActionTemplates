@@ -10,6 +10,10 @@ inputs:
     description: package.json scripts to run in order, separated by spaces or new lines.
     required: false
     default: build
+  setup:
+    description: package.json scripts to run with `npm run` before dependencies are installed (for example one that vendors local packages), separated by spaces or new lines.
+    required: false
+    default: ''
   dependencies:
     description: Local Node project folders it depends on (for example `file:` dependencies), one per line. Each is installed and its `build` script run first.
     required: false
@@ -32,6 +36,7 @@ runs:
       env:
         INPUT_PATH: ${{ inputs.path }}
         INPUT_SCRIPTS: ${{ inputs.scripts }}
+        INPUT_SETUP: ${{ inputs.setup }}
         INPUT_DEPENDENCIES: ${{ inputs.dependencies }}
         INPUT_PACKAGE_MANAGER: ${{ inputs.package-manager }}
         INPUT_BROWSER: ${{ inputs.browser }}

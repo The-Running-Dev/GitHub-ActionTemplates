@@ -1,0 +1,63 @@
+name: npm publish
+description: Publish a packed npm tarball to npmjs or GitHub Packages, with provenance and a dist-tag chosen from the version.
+author: The-Running-Dev
+
+inputs:
+  tarball:
+    description: Tarball to publish, relative to the workspace. Wildcards are allowed but must match exactly one file.
+    required: true
+  registry:
+    description: Registry URL. `https://npm.pkg.github.com` publishes to GitHub Packages.
+    required: false
+    default: https://registry.npmjs.org
+  token:
+    description: >-
+      Registry token (an npm automation token, or `github.token` for GitHub Packages). Empty uses npm trusted
+      publishing (OIDC), which needs npm 11.5.1 or later and `id-token: write`.
+    required: false
+    default: ''
+  access:
+    description: '`public` or `restricted`. Empty uses the package.json `publishConfig` or the npm default.'
+    required: false
+    default: ''
+  provenance:
+    description: '`true` publishes with a provenance statement (npmjs only; needs `id-token: write`).'
+    required: false
+    default: 'true'
+  dist-tag:
+    description: dist-tag to publish under. Empty uses `next` for prerelease versions and `latest` otherwise.
+    required: false
+    default: ''
+  dry-run:
+    description: '`true` runs npm publish --dry-run.'
+    required: false
+    default: 'false'
+
+outputs:
+  name:
+    description: Package name.
+    value: ${{ steps.publish.outputs.name }}
+  version:
+    description: Package version.
+    value: ${{ steps.publish.outputs.version }}
+  dist-tag:
+    description: dist-tag the package was published under.
+    value: ${{ steps.publish.outputs.dist-tag }}
+  published:
+    description: '`true` when the package was published (`false` for a dry run).'
+    value: ${{ steps.publish.outputs.published }}
+
+runs:
+  using: composite
+  steps:
+    - id: publish
+      shell: pwsh
+      env:
+        INPUT_TARBALL: ${{ inputs.tarball }}
+        INPUT_REGISTRY: ${{ inputs.registry }}
+        INPUT_ACCESS: ${{ inputs.access }}
+        INPUT_PROVENANCE: ${{ inputs.provenance }}
+        INPUT_DIST_TAG: ${{ inputs.dist-tag }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        NODE_AUTH_TOKEN: ${{ inputs.token }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH npm-publish.ps1)'

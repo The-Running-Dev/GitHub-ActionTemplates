@@ -1,0 +1,251 @@
+name: npm package
+
+# Tests and packs a Node package once, then publishes that tarball: to npmjs (or GitHub
+# Packages) from a version tag, and optionally as a prerelease from the default branch. A tag
+# build also creates the GitHub release with the CHANGELOG notes and the tarball attached.
+#
+# The version comes from package.json; a tag must match it. The caller grants
+# `contents: write`, `packages: write` and `id-token: write`. See docs/npm-package.md.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Package folder, relative to the repository root.
+        type: string
+        default: .
+      node-version:
+        description: Node version for the build and the publish.
+        type: string
+        default: lts/*
+      package-manager:
+        description: '`npm`, `pnpm` or `yarn`. Empty detects it from the lockfile.'
+        type: string
+        default: ''
+      scripts:
+        description: package.json scripts run before packing, separated by spaces.
+        type: string
+        default: test
+      setup:
+        description: package.json scripts run with `npm run` before the install, separated by spaces.
+        type: string
+        default: ''
+      pre-build:
+        description: Repository scripts run before the install, by path from the repository root, one per line. `.ps1` files run in PowerShell.
+        type: string
+        default: ''
+      post-build:
+        description: Repository scripts run after the package.json scripts, before packing, by path from the repository root, one per line.
+        type: string
+        default: ''
+      publish:
+        description: Publish tag builds. `false` only builds and packs.
+        type: boolean
+        default: true
+      publish-prereleases:
+        description: Also publish default-branch builds as prereleases (`1.2.3-ci.57`) under the `next` dist-tag.
+        type: boolean
+        default: false
+      registry:
+        description: Registry URL. `https://npm.pkg.github.com` publishes to GitHub Packages.
+        type: string
+        default: https://registry.npmjs.org
+      access:
+        description: '`public` or `restricted`. Empty uses the package.json `publishConfig` or the npm default.'
+        type: string
+        default: ''
+      provenance:
+        description: Publish with a provenance statement (npmjs only).
+        type: boolean
+        default: true
+      dist-tag:
+        description: dist-tag to publish under. Empty uses `next` for prereleases and `latest` otherwise.
+        type: string
+        default: ''
+      github-release:
+        description: Create the GitHub release for a tag build, with the tarball attached.
+        type: boolean
+        default: true
+      changelog:
+        description: CHANGELOG with the release notes, from the repository root. A tag build needs its section.
+        type: string
+        default: CHANGELOG.md
+      tag-prefix:
+        description: Prefix of release tags.
+        type: string
+        default: v
+      artifact-name:
+        description: Name of the tarball artifact.
+        type: string
+        default: npm-package
+      fetch-depth:
+        description: Commits to fetch; 0 fetches all history.
+        type: number
+        default: 1
+      submodules:
+        description: '`true`, `recursive` or `false`, as for actions/checkout.'
+        type: string
+        default: 'false'
+      timeout-minutes:
+        description: Timeout of the build job.
+        type: number
+        default: 30
+    secrets:
+      NPM_TOKEN:
+        description: npm automation token. Without it npmjs uses trusted publishing and GitHub Packages uses `github.token`.
+        required: false
+    outputs:
+      version:
+        description: Package version that was built.
+        value: ${{ jobs.build.outputs.version }}
+      published:
+        description: '`true` when the package was published.'
+        value: ${{ jobs.publish.outputs.published }}
+      release-url:
+        description: GitHub release URL, empty when no release was created.
+        value: ${{ jobs.release.outputs.url }}
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tarball: ${{ steps.pack.outputs.tarball }}
+      is-tag: ${{ steps.context.outputs.is-tag }}
+      is-default-branch: ${{ steps.context.outputs.is-default-branch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          package-manager-cache: false
+
+      - name: Context
+        id: context
+        uses: $/actions/context
+
+      # On a tag build this fails unless the tag matches package.json.
+      - name: Version
+        id: version
+        uses: $/actions/version
+        with:
+          strategy: manifest
+          manifest: package.json
+          tag-prefix: ${{ inputs.tag-prefix }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Pre-build
+        if: inputs.pre-build != ''
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.pre-build }}
+
+      - name: Build and test
+        uses: $/actions/node-scripts
+        with:
+          path: ${{ inputs.working-directory }}
+          scripts: ${{ inputs.scripts }}
+          setup: ${{ inputs.setup }}
+          package-manager: ${{ inputs.package-manager }}
+
+      - name: Post-build
+        if: inputs.post-build != ''
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.post-build }}
+
+      - name: Pack
+        id: pack
+        uses: $/actions/npm-pack
+        with:
+          path: ${{ inputs.working-directory }}
+          version: ${{ steps.version.outputs.version }}
+
+      - name: Upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ steps.pack.outputs.tarball }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: build
+    if: >-
+      inputs.publish && (needs.build.outputs.is-tag == 'true' ||
+      (inputs.publish-prereleases && needs.build.outputs.is-default-branch == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    concurrency:
+      group: npm-publish-${{ github.repository }}
+      cancel-in-progress: false
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    steps:
+      - name: Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          package-manager-cache: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: dist-package
+
+      - name: Publish
+        id: publish
+        uses: $/actions/npm-publish
+        with:
+          tarball: dist-package/*.tgz
+          registry: ${{ inputs.registry }}
+          token: ${{ secrets.NPM_TOKEN || (contains(inputs.registry, 'npm.pkg.github.com') && github.token || '') }}
+          access: ${{ inputs.access }}
+          provenance: ${{ inputs.provenance }}
+          dist-tag: ${{ inputs.dist-tag }}
+
+  release:
+    name: GitHub release
+    needs: [build, publish]
+    if: >-
+      !cancelled() && inputs.github-release && needs.build.result == 'success' &&
+      needs.build.outputs.is-tag == 'true' && contains(fromJSON('["success", "skipped"]'), needs.publish.result)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      url: ${{ steps.release.outputs.url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: dist-package
+
+      - name: Release
+        id: release
+        uses: $/actions/github-release
+        with:
+          files: dist-package/*.tgz
+          changelog: ${{ inputs.changelog }}
+          tag-prefix: ${{ inputs.tag-prefix }}

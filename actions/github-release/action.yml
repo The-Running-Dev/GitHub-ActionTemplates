@@ -1,0 +1,63 @@
+name: GitHub release
+description: Create or update the GitHub release for a tag, with notes from the CHANGELOG section for its version and the given files attached.
+author: The-Running-Dev
+
+inputs:
+  tag:
+    description: Release tag. Empty uses the tag that triggered the run.
+    required: false
+    default: ''
+  files:
+    description: Files to attach, relative to the workspace, one per line. Wildcards are allowed and `**/` searches folders.
+    required: false
+    default: ''
+  changelog:
+    description: >-
+      CHANGELOG file, relative to the workspace. When it exists, the `## [x.y.z]` section for the tag's version is
+      required and becomes the notes; when it does not, GitHub generates the notes.
+    required: false
+    default: CHANGELOG.md
+  tag-prefix:
+    description: Prefix stripped from the tag to find the CHANGELOG version.
+    required: false
+    default: v
+  title:
+    description: Release title. Empty uses the tag.
+    required: false
+    default: ''
+  prerelease:
+    description: '`true`, `false`, or `auto` (a prerelease when the tag version has a prerelease part).'
+    required: false
+    default: auto
+  draft:
+    description: '`true` creates a draft release.'
+    required: false
+    default: 'false'
+  token:
+    description: 'Token for the GitHub CLI; needs `contents: write`.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  url:
+    description: Release page URL.
+    value: ${{ steps.release.outputs.url }}
+  created:
+    description: '`true` when the release was created, `false` when an existing one was updated.'
+    value: ${{ steps.release.outputs.created }}
+
+runs:
+  using: composite
+  steps:
+    - id: release
+      shell: pwsh
+      env:
+        INPUT_TAG: ${{ inputs.tag }}
+        INPUT_FILES: ${{ inputs.files }}
+        INPUT_CHANGELOG: ${{ inputs.changelog }}
+        INPUT_TAG_PREFIX: ${{ inputs.tag-prefix }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_PRERELEASE: ${{ inputs.prerelease }}
+        INPUT_DRAFT: ${{ inputs.draft }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH github-release.ps1)'

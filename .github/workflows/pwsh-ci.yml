@@ -1,0 +1,178 @@
+name: PowerShell CI
+
+# Checks PowerShell files for syntax errors (and optionally PSScriptAnalyzer findings), runs the
+# Pester tests on each operating system, and reports the results and coverage. A final `Result`
+# job gives branch protection one check to require, whatever the matrix.
+#
+# The caller grants `contents: read`. See docs/pwsh-ci.md.
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: Runner labels as a JSON list, e.g. `'["ubuntu-latest", "windows-latest", "macos-latest"]'`.
+        type: string
+        default: '["ubuntu-latest"]'
+      paths:
+        description: Folders or files to check, from the repository root, one per line.
+        type: string
+        default: .
+      exclude:
+        description: Wildcard patterns of paths `pwsh-check` skips, one per line.
+        type: string
+        default: ''
+      analyzer:
+        description: Also run PSScriptAnalyzer and fail on any finding.
+        type: boolean
+        default: false
+      analyzer-settings:
+        description: PSScriptAnalyzer settings file, from the repository root. Empty reports Error and Warning findings of the default rules.
+        type: string
+        default: ''
+      analyzer-version:
+        description: PSScriptAnalyzer version.
+        type: string
+        default: 1.25.0
+      tests:
+        description: Pester test folders or files, from the repository root, one per line.
+        type: string
+        default: tests
+      pester-version:
+        description: Pester version (5.x or 6.x).
+        type: string
+        default: 5.7.1
+      tags:
+        description: Run only tests with these tags, comma-separated.
+        type: string
+        default: ''
+      exclude-tags:
+        description: Skip tests with these tags, comma-separated.
+        type: string
+        default: ''
+      allow-empty:
+        description: Pass when no tests ran.
+        type: boolean
+        default: false
+      coverage:
+        description: Files or folders to measure coverage for, one per line. Empty turns coverage off.
+        type: string
+        default: ''
+      minimum-coverage:
+        description: Minimum line coverage percentage when `coverage` is set.
+        type: string
+        default: '0'
+      pre-build:
+        description: Repository scripts run before the checks, by path from the repository root, one per line. `.ps1` files run in PowerShell.
+        type: string
+        default: ''
+      post-build:
+        description: Repository scripts run after the tests, by path from the repository root, one per line.
+        type: string
+        default: ''
+      artifact-name:
+        description: Name prefix of the results and coverage artifact; the OS is appended.
+        type: string
+        default: pester
+      fetch-depth:
+        description: Commits to fetch; 0 fetches all history.
+        type: number
+        default: 1
+      submodules:
+        description: '`true`, `recursive` or `false`, as for actions/checkout.'
+        type: string
+        default: 'false'
+      timeout-minutes:
+        description: Timeout of each test job.
+        type: number
+        default: 30
+
+permissions: {}
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: Pre-build
+        if: inputs.pre-build != ''
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.pre-build }}
+
+      - name: Check
+        uses: $/actions/pwsh-check
+        with:
+          paths: ${{ inputs.paths }}
+          exclude: ${{ inputs.exclude }}
+          analyzer: ${{ inputs.analyzer }}
+          analyzer-settings: ${{ inputs.analyzer-settings }}
+          analyzer-version: ${{ inputs.analyzer-version }}
+
+      - name: Pester
+        id: pester
+        uses: $/actions/pester
+        with:
+          path: ${{ inputs.tests }}
+          version: ${{ inputs.pester-version }}
+          tags: ${{ inputs.tags }}
+          exclude-tags: ${{ inputs.exclude-tags }}
+          coverage: ${{ inputs.coverage }}
+          allow-empty: ${{ inputs.allow-empty }}
+
+      # Pester already annotates failed tests.
+      - name: Test report
+        if: ${{ !cancelled() && steps.pester.outputs.results != '' }}
+        uses: $/actions/test-report
+        with:
+          results: ${{ steps.pester.outputs.results }}
+          title: Tests (${{ matrix.os }})
+          annotate: 'false'
+
+      - name: Coverage
+        if: steps.pester.outputs.coverage-report != ''
+        uses: $/actions/coverage-gate
+        with:
+          reports: ${{ steps.pester.outputs.coverage-report }}
+          minimum: ${{ inputs.minimum-coverage }}
+          title: Coverage (${{ matrix.os }})
+
+      - name: Post-build
+        if: inputs.post-build != ''
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.post-build }}
+
+      - name: Upload
+        if: ${{ !cancelled() && steps.pester.outputs.results != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-name }}-${{ matrix.os }}
+          path: |
+            ${{ steps.pester.outputs.results }}
+            ${{ steps.pester.outputs.coverage-report }}
+          if-no-files-found: warn
+
+  result:
+    name: Result
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - uses: $/actions/needs-gate
+        with:
+          needs: ${{ toJSON(needs) }}

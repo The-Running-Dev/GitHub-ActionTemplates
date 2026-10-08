@@ -11,28 +11,6 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot '..' 'actions' '_lib' 'Functions.psm1') -Force
 
-$Version = $Version.TrimStart('v')
-$lines = Get-Content -LiteralPath $Path
-$heading = '^##\s+\[' + [regex]::Escape($Version) + '\]'
-
-$start = -1
-for ($i = 0; $i -lt $lines.Count; $i++) {
-    if ($lines[$i] -match $heading) { $start = $i; break }
-}
-
-if ($start -lt 0) {
-    throw "CHANGELOG has no '## [$Version]' section."
-}
-
-$body = [System.Collections.Generic.List[string]]::new()
-for ($i = $start + 1; $i -lt $lines.Count -and $lines[$i] -notmatch '^##\s'; $i++) {
-    $body.Add($lines[$i])
-}
-
-$text = ($body -join "`n").Trim()
-if (-not $text) {
-    throw "CHANGELOG section '## [$Version]' is empty."
-}
-
-$text
+Get-ChangelogSection -Path $Path -Version $Version

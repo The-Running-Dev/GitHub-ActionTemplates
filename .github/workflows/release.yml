@@ -22,9 +22,11 @@ jobs:
     uses: $/.github/workflows/lint.yml
 
   self-test:
-    # The docs self-test calls docs.yml, whose deploy job needs these even when it is skipped.
+    # The self-test calls docs.yml and npm-package.yml, whose deploy, publish and release jobs
+    # need these even when they are skipped.
     permissions:
-      contents: read
+      contents: write
+      packages: write
       pages: write
       id-token: write
     uses: $/.github/workflows/self-test.yml

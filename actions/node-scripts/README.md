@@ -15,12 +15,15 @@ when its `node-project` input is set, for a site project that checks or merges t
 
 1. Each folder in `dependencies` is installed and its `build` script run, in order. Use it for
    `file:` dependencies that must be built before the project installs them.
-2. The project is installed and each script in `scripts` runs in order. The first failure fails
+2. Each script in `setup` runs with `npm run` before the project is installed, for a script that
+   vendors local packages or generates files the install needs.
+3. The project is installed and each script in `scripts` runs in order. The first failure fails
    the step.
 
 Installs use the lockfile: `npm ci` (or `npm install` without a lockfile),
 `pnpm install --frozen-lockfile` or `yarn install`. The package manager is detected per folder
-from its lockfile unless `package-manager` is set.
+from its lockfile unless `package-manager` is set. When pnpm or yarn is not installed, it runs
+`corepack enable` first.
 
 ## Browser tests
 
@@ -37,6 +40,7 @@ variables.
 |---|---|---|
 | `path` | required | Node project folder, relative to the workspace. |
 | `scripts` | `build` | package.json scripts to run in order, separated by spaces or new lines. |
+| `setup` | none | package.json scripts to run before the install, separated by spaces or new lines. |
 | `dependencies` | none | Local Node project folders to build first, one per line. |
 | `package-manager` | from each lockfile | `npm`, `pnpm` or `yarn`. |
 | `browser` | `false` | `true` provides a system Chromium. |

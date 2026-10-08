@@ -1,0 +1,23 @@
+name: Check clean
+description: Fail when the working tree has changes, for example generated files that were not committed or a formatter that rewrote sources.
+author: The-Running-Dev
+
+inputs:
+  paths:
+    description: Paths to check, relative to the workspace, one per line. Empty checks the whole repository.
+    required: false
+    default: ''
+
+outputs:
+  clean:
+    description: '`true` when there are no changes.'
+    value: ${{ steps.check.outputs.clean }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: pwsh
+      env:
+        INPUT_PATHS: ${{ inputs.paths }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH check-clean.ps1)'

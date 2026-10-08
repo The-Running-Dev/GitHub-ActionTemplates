@@ -519,6 +519,17 @@ Describe 'node-scripts' {
         $result.Summary | Should -Match ([regex]::Escape('Ran `check`, `merge` in `site`.'))
     }
 
+    It 'runs the setup scripts before the install' {
+        $workspace = Join-Path $TestDrive 'setup'
+        New-NodeProject (Join-Path $workspace 'site') 'vendor', 'preinstall', 'build'
+
+        $result = Invoke-NodeScript $workspace @{ INPUT_PATH = 'site'; INPUT_SCRIPTS = 'build'; INPUT_SETUP = 'vendor' }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        @(Get-Content -LiteralPath (Join-Path $workspace 'order.txt')) | Should -Be @('site:vendor', 'site:preinstall', 'site:build')
+        $result.Summary | Should -Match ([regex]::Escape('Ran `vendor`, `build` in `site`.'))
+    }
+
     It 'stops at a failing script' {
         $workspace = Join-Path $TestDrive 'failing'
         New-NodeProject (Join-Path $workspace 'site') 'merge' @{ check = 'node -e "process.exit(2)"' }

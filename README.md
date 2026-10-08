@@ -6,7 +6,7 @@ call a template, with every decision (version, publish or not, image name) made 
 in every repository.
 
 > **Status: 0.x.** The workflows and actions below are usable now. More reusable workflows
-> (npm, .NET, PowerShell module, Docker image) arrive in later 0.x releases, see
+> (.NET, Docker image, static sites) arrive in later 0.x releases, see
 > [docs/PLAN.md](docs/PLAN.md). Inputs may still change before `v1.0.0`.
 
 ## Workflows
@@ -14,6 +14,9 @@ in every repository.
 | Workflow | What it does |
 |---|---|
 | [`docs.yml`](docs/docs.md) | Builds a Docusaurus site and deploys it to GitHub Pages from the default branch and tags. |
+| [`node-ci.yml`](docs/node-ci.md) | Runs a Node project's scripts on an OS × Node matrix, with test report, coverage gate and clean-tree check. |
+| [`pwsh-ci.yml`](docs/pwsh-ci.md) | Syntax-checks PowerShell files, optionally runs PSScriptAnalyzer, and runs Pester with coverage on each OS. |
+| [`npm-package.yml`](docs/npm-package.md) | Tests and packs an npm package, publishes it from tags (npmjs or GitHub Packages) and creates the GitHub release. |
 
 ```yaml
 jobs:
@@ -36,6 +39,15 @@ Complete caller workflows are in [examples/](examples).
 | [`run-scripts`](actions/run-scripts/README.md) | Runs repository scripts by path, in order, failing on the first failure. |
 | [`changelog`](actions/changelog/README.md) | Writes a Markdown changelog page from the git history, with pull request links. |
 | [`node-scripts`](actions/node-scripts/README.md) | Installs a Node project and runs its scripts in order, after building its local dependencies; optionally provides Chromium. |
+| [`pwsh-check`](actions/pwsh-check/README.md) | Parses PowerShell files for syntax errors and optionally runs PSScriptAnalyzer, annotating each problem. |
+| [`pester`](actions/pester/README.md) | Runs Pester 5 or 6 at a pinned version with results and coverage; fails when no tests ran. |
+| [`test-report`](actions/test-report/README.md) | Summarises JUnit, NUnit and TRX results in the job summary and annotates failures. |
+| [`coverage-gate`](actions/coverage-gate/README.md) | Combines Cobertura, JaCoCo and LCOV coverage and fails below a minimum. |
+| [`check-clean`](actions/check-clean/README.md) | Fails when the build changed or added files that are not ignored. |
+| [`needs-gate`](actions/needs-gate/README.md) | Fails when a needed job failed: one stable required check for a matrix. |
+| [`npm-pack`](actions/npm-pack/README.md) | Packs a Node project into a tarball, optionally stamping a computed version. |
+| [`npm-publish`](actions/npm-publish/README.md) | Publishes a tarball to npmjs or GitHub Packages with provenance and a dist-tag from the version. |
+| [`github-release`](actions/github-release/README.md) | Creates or updates the GitHub release for a tag with CHANGELOG notes and attachments. |
 
 The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners
 (`docs-build` with the `template` builder runs in the build-agent container).
@@ -99,6 +111,8 @@ public issue.
 ## Documentation
 
 - [docs/docs.md](docs/docs.md): the documentation workflow.
+- [docs/node-ci.md](docs/node-ci.md), [docs/pwsh-ci.md](docs/pwsh-ci.md),
+  [docs/npm-package.md](docs/npm-package.md): the Node, PowerShell and npm package workflows.
 - [docs/conventions.md](docs/conventions.md): event semantics, version strategies, naming and
   security rules shared by every template.
 - [docs/PLAN.md](docs/PLAN.md): the roadmap.

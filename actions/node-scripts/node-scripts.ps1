@@ -9,6 +9,7 @@ Import-Module (Join-Path $PSScriptRoot '..' '_lib' 'Functions.psm1') -Force
 $workspace = [System.IO.Path]::GetFullPath($(if ($env:GITHUB_WORKSPACE) { $env:GITHUB_WORKSPACE } else { (Get-Location).Path }))
 $project = Get-ActionInput 'path'
 $scripts = @((Get-ActionInput 'scripts' 'build') -split '\s+' | Where-Object { $_ })
+$setup = @((Get-ActionInput 'setup') -split '\s+' | Where-Object { $_ })
 $dependencies = Split-ActionList (Get-ActionInput 'dependencies')
 $packageManager = Get-ActionInput 'package-manager'
 $browser = (Get-ActionInput 'browser' 'false') -eq 'true'
@@ -23,14 +24,16 @@ function Resolve-Project([string] $Folder, [string] $Name) {
     return $path
 }
 
-function Invoke-Project([string] $Path, [string[]] $Scripts) {
+function Invoke-Project([string] $Path, [string[]] $Scripts, [string[]] $Setup = @()) {
     $name = [System.IO.Path]::GetRelativePath($workspace, $Path).Replace('\', '/')
     $manager = Get-PackageManager $Path $packageManager
-    Write-Host "::group::$name (${manager}: $($Scripts -join ', '))"
+    Write-Host "::group::$name (${manager}: $((@($Setup) + @($Scripts)) -join ', '))"
     try {
-        Install-NodePackage $Path $manager
         Push-Location -LiteralPath $Path
         try {
+            # Setup scripts prepare the install (vendored packages, generated files), so they run first.
+            foreach ($script in $Setup) { npm run $script }
+            Install-NodePackage $Path $manager
             foreach ($script in $Scripts) { & $manager run $script }
         }
         finally { Pop-Location }
@@ -76,7 +79,7 @@ if ($browser) {
 }
 
 foreach ($dependency in $dependencyPaths) { Invoke-Project $dependency @('build') }
-Invoke-Project $projectPath $scripts
+Invoke-Project $projectPath $scripts $setup
 
 $relative = [System.IO.Path]::GetRelativePath($workspace, $projectPath).Replace('\', '/')
-Add-ActionSummary "Ran ``$($scripts -join '`, `')`` in ``$relative``."
+Add-ActionSummary "Ran ``$((@($setup) + @($scripts)) -join '`, `')`` in ``$relative``."
