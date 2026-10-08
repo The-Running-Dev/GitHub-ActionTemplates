@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-08
+
 ### Added
 - `docs.yml` reusable workflow: builds a Docusaurus site in the build-agent image
   (`ghcr.io/the-running-dev/build-agent`, pinned by digest) and deploys it to GitHub Pages from
