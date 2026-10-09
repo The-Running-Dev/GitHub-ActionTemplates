@@ -150,6 +150,8 @@ jobs:
       working-directory: tests/fixtures/node-app
       os: '["ubuntu-latest", "windows-latest"]'
       scripts: lint test
+      # Windows has Chrome installed outside PATH, Ubuntu on it.
+      browser: true
       test-results: test-results/junit.xml
       coverage-reports: coverage/lcov.info
       minimum-coverage: '50'

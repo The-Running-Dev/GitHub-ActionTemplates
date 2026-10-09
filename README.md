@@ -38,7 +38,7 @@ Complete caller workflows are in [examples/](examples).
 | [`docs-build`](actions/docs-build/README.md) | Builds a Docusaurus site from a bundled template or the folder's own Node project. |
 | [`run-scripts`](actions/run-scripts/README.md) | Runs repository scripts by path, in order, failing on the first failure. |
 | [`changelog`](actions/changelog/README.md) | Writes a Markdown changelog page from the git history, with pull request links. |
-| [`node-scripts`](actions/node-scripts/README.md) | Installs a Node project and runs its scripts in order, after building its local dependencies; optionally provides Chromium. |
+| [`node-scripts`](actions/node-scripts/README.md) | Installs a Node project and runs its scripts in order, after building its local dependencies; optionally provides Chromium or Chrome. |
 | [`pwsh-check`](actions/pwsh-check/README.md) | Parses PowerShell files for syntax errors and optionally runs PSScriptAnalyzer, annotating each problem. |
 | [`pester`](actions/pester/README.md) | Runs Pester 5 or 6 at a pinned version with results and coverage; fails when no tests ran. |
 | [`test-report`](actions/test-report/README.md) | Summarises JUnit, NUnit and TRX results in the job summary and annotates failures. |
