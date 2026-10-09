@@ -1,0 +1,27 @@
+name: Needs gate
+description: Fail when any job this job needs failed or was cancelled. Gives a matrix workflow one stable check name to require in branch protection.
+author: The-Running-Dev
+
+inputs:
+  needs:
+    description: The `needs` context as JSON, passed as `toJSON(needs)`.
+    required: true
+  allow-skipped:
+    description: '`true` treats skipped jobs as passing.'
+    required: false
+    default: 'true'
+
+outputs:
+  result:
+    description: '`success` or `failure`.'
+    value: ${{ steps.gate.outputs.result }}
+
+runs:
+  using: composite
+  steps:
+    - id: gate
+      shell: pwsh
+      env:
+        INPUT_NEEDS: ${{ inputs.needs }}
+        INPUT_ALLOW_SKIPPED: ${{ inputs.allow-skipped }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH needs-gate.ps1)'

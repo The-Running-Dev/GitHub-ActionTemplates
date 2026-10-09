@@ -1,0 +1,51 @@
+name: PowerShell check
+description: Parse every PowerShell file for syntax errors and optionally run PSScriptAnalyzer, with each problem annotated on its file and line.
+author: The-Running-Dev
+
+inputs:
+  paths:
+    description: Folders or files to check, relative to the workspace, one per line (or separated by `;`).
+    required: false
+    default: .
+  exclude:
+    description: Wildcard patterns of workspace-relative paths to skip, one per line (for example `vendor/*`). `.git` and `node_modules` are always skipped.
+    required: false
+    default: ''
+  parse:
+    description: '`true` parses each `.ps1`, `.psm1` and `.psd1` file and fails on syntax errors.'
+    required: false
+    default: 'true'
+  analyzer:
+    description: '`true` also runs PSScriptAnalyzer and fails on any finding.'
+    required: false
+    default: 'false'
+  analyzer-settings:
+    description: PSScriptAnalyzer settings file, relative to the workspace. Empty reports Error and Warning findings with the default rules.
+    required: false
+    default: ''
+  analyzer-version:
+    description: PSScriptAnalyzer version to install.
+    required: false
+    default: 1.25.0
+
+outputs:
+  files:
+    description: Number of files checked.
+    value: ${{ steps.check.outputs.files }}
+  errors:
+    description: Number of syntax errors and analyzer findings.
+    value: ${{ steps.check.outputs.errors }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: pwsh
+      env:
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_EXCLUDE: ${{ inputs.exclude }}
+        INPUT_PARSE: ${{ inputs.parse }}
+        INPUT_ANALYZER: ${{ inputs.analyzer }}
+        INPUT_ANALYZER_SETTINGS: ${{ inputs.analyzer-settings }}
+        INPUT_ANALYZER_VERSION: ${{ inputs.analyzer-version }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH pwsh-check.ps1)'

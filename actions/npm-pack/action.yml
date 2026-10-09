@@ -1,0 +1,44 @@
+name: npm pack
+description: Pack a Node project into a tarball with npm pack, optionally stamping a computed version first.
+author: The-Running-Dev
+
+inputs:
+  path:
+    description: Node project folder, relative to the workspace.
+    required: false
+    default: .
+  version:
+    description: Version to stamp into package.json before packing (without committing or tagging). Empty keeps the package.json version.
+    required: false
+    default: ''
+  destination:
+    description: Folder the tarball is written to, relative to the workspace.
+    required: false
+    default: dist-package
+  ignore-scripts:
+    description: '`true` skips the prepack, prepare and postpack scripts, for a project that was built in an earlier step.'
+    required: false
+    default: 'false'
+
+outputs:
+  tarball:
+    description: Tarball path, relative to the workspace.
+    value: ${{ steps.pack.outputs.tarball }}
+  name:
+    description: Package name.
+    value: ${{ steps.pack.outputs.name }}
+  version:
+    description: Package version.
+    value: ${{ steps.pack.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: pack
+      shell: pwsh
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_DESTINATION: ${{ inputs.destination }}
+        INPUT_IGNORE_SCRIPTS: ${{ inputs.ignore-scripts }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH npm-pack.ps1)'

@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  ci:
+    permissions:
+      contents: read
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/node-ci.yml@v0
+    with:
+      node-versions: '["20", "22", "24"]'
+      scripts: lint test
+      test-results: test-results/junit.xml
+      coverage-reports: coverage/lcov.info
+      minimum-coverage: '80'

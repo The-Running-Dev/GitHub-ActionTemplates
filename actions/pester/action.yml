@@ -1,0 +1,86 @@
+name: Pester
+description: Run Pester tests with a pinned Pester version, write NUnit results and optional code coverage, and fail on failed tests or when no tests ran.
+author: The-Running-Dev
+
+inputs:
+  path:
+    description: Test folders or files, relative to the workspace, one per line (or separated by `;`).
+    required: false
+    default: tests
+  version:
+    description: Pester version to install (5.x or 6.x).
+    required: false
+    default: 5.7.1
+  tags:
+    description: Run only tests with these tags, comma-separated.
+    required: false
+    default: ''
+  exclude-tags:
+    description: Skip tests with these tags, comma-separated.
+    required: false
+    default: ''
+  results:
+    description: Test results file, relative to the workspace. Empty writes none.
+    required: false
+    default: test-results/pester.xml
+  results-format:
+    description: '`NUnitXml` (NUnit 2.5), `NUnit3` (Pester 5.6+) or `JUnitXml`.'
+    required: false
+    default: NUnitXml
+  coverage:
+    description: Files or folders to measure code coverage for, relative to the workspace, one per line. Empty turns coverage off.
+    required: false
+    default: ''
+  coverage-format:
+    description: '`JaCoCo` or `CoverageGutters`, or `Cobertura` with Pester 5.6+.'
+    required: false
+    default: JaCoCo
+  coverage-output:
+    description: Coverage report file, relative to the workspace.
+    required: false
+    default: coverage/pester-coverage.xml
+  allow-empty:
+    description: '`true` passes when no tests ran. By default zero tests is a failure, so a wrong path cannot pass silently.'
+    required: false
+    default: 'false'
+
+outputs:
+  total:
+    description: Number of tests that ran or were skipped.
+    value: ${{ steps.pester.outputs.total }}
+  passed:
+    description: Number of passed tests.
+    value: ${{ steps.pester.outputs.passed }}
+  failed:
+    description: Number of failed tests.
+    value: ${{ steps.pester.outputs.failed }}
+  skipped:
+    description: Number of skipped tests.
+    value: ${{ steps.pester.outputs.skipped }}
+  results:
+    description: Test results file, relative to the workspace (empty when none was written).
+    value: ${{ steps.pester.outputs.results }}
+  coverage-report:
+    description: Coverage report file, relative to the workspace (empty when coverage is off).
+    value: ${{ steps.pester.outputs.coverage-report }}
+  coverage:
+    description: Line coverage percentage reported by Pester (empty when coverage is off).
+    value: ${{ steps.pester.outputs.coverage }}
+
+runs:
+  using: composite
+  steps:
+    - id: pester
+      shell: pwsh
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_TAGS: ${{ inputs.tags }}
+        INPUT_EXCLUDE_TAGS: ${{ inputs.exclude-tags }}
+        INPUT_RESULTS: ${{ inputs.results }}
+        INPUT_RESULTS_FORMAT: ${{ inputs.results-format }}
+        INPUT_COVERAGE: ${{ inputs.coverage }}
+        INPUT_COVERAGE_FORMAT: ${{ inputs.coverage-format }}
+        INPUT_COVERAGE_OUTPUT: ${{ inputs.coverage-output }}
+        INPUT_ALLOW_EMPTY: ${{ inputs.allow-empty }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH pester.ps1)'

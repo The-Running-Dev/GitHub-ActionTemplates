@@ -1,0 +1,21 @@
+name: Package
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions: {}
+
+jobs:
+  package:
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/npm-package.yml@v0
+    with:
+      access: public
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }} # omit with trusted publishing

@@ -140,9 +140,25 @@ Event semantics are identical across archetypes:
 
 Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-local.
 
+### Phase 3 decisions
+
+- `node-ci.yml` and `pwsh-ci.yml` run on hosted runners with `setup-node` and the runner's
+  PowerShell 7, so a matrix can include Windows and macOS. `npm-package.yml` builds on
+  `ubuntu-latest`.
+- Every matrix workflow ends with a `Result` job (`needs-gate`): branch protection requires
+  `<caller job> / Result`, which does not change when the matrix does.
+- `npm-package.yml` publishes tag builds only by default; `publish-prereleases: true` adds
+  `1.2.3-ci.N` builds from the default branch under the `next` dist-tag.
+- npm trusted publishing is registered with the **calling** workflow's file name.
+- Migration targets, each in its own pull request: Data.Json (`npm-package.yml` + `pwsh-ci.yml`),
+  GameOfLife, Adventures.Content, GameEngine, SkyNetHR and PSGenerator (`node-ci.yml` and/or
+  `pwsh-ci.yml`), and a new pipeline for ServiceContract (`node-ci.yml` + `npm-package.yml`).
+
 ## Open questions
 
 1. Default runner OS — `ubuntu-latest` everywhere with `os` input, or `windows-latest` default for `dotnet.yml` (Cleaner/HotCorners/WinGet need Windows)?
+   Partly resolved: `node-ci.yml` and `pwsh-ci.yml` run on GitHub-hosted runners (an OS matrix rules
+   out the build-agent container) with `os` defaulting to `["ubuntu-latest"]`. Still open for `dotnet.yml`.
 2. ~~Docs builder: PowerShell or a Node CLI?~~ Resolved: PowerShell, which the build-agent image already has.
 3. Starter workflows: add a `workflow-templates/` set to a `The-Running-Dev/.github` repository for the "New workflow" UI?
 4. Claude review: include it in the public library, or keep it as a SubZeroDev-only shared workflow?

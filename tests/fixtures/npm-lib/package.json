@@ -1,5 +1,12 @@
 {
   "name": "fixture-npm-lib",
   "version": "2.3.4",
-  "private": true
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "node --test"
+  }
 }

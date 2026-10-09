@@ -140,3 +140,74 @@ jobs:
       - name: Check the sites
         shell: pwsh
         run: ./scripts/Test-DocsArtifacts.ps1
+
+  node-ci:
+    name: Node CI
+    permissions:
+      contents: read
+    uses: $/.github/workflows/node-ci.yml
+    with:
+      working-directory: tests/fixtures/node-app
+      os: '["ubuntu-latest", "windows-latest"]'
+      scripts: lint test
+      test-results: test-results/junit.xml
+      coverage-reports: coverage/lcov.info
+      minimum-coverage: '50'
+      check-clean: true
+      artifacts: |
+        tests/fixtures/node-app/test-results/junit.xml
+        tests/fixtures/node-app/coverage/lcov.info
+      artifact-name: ci-node
+
+  pwsh-ci:
+    name: PowerShell CI
+    permissions:
+      contents: read
+    uses: $/.github/workflows/pwsh-ci.yml
+    with:
+      os: '["ubuntu-latest", "windows-latest"]'
+      paths: tests/fixtures/pwsh-module
+      analyzer: true
+      analyzer-settings: PSScriptAnalyzerSettings.psd1
+      tests: tests/fixtures/pwsh-module/tests
+      coverage: tests/fixtures/pwsh-module/Fixture.Module.psm1
+      minimum-coverage: '80'
+      artifact-name: ci-pester
+
+  # The fixture's version cannot match a tag of this repository.
+  npm-package:
+    name: npm package
+    if: github.ref_type != 'tag'
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: $/.github/workflows/npm-package.yml
+    with:
+      working-directory: tests/fixtures/npm-lib
+      publish: false
+      github-release: false
+      artifact-name: ci-npm-package
+
+  ci-check:
+    name: CI artifacts
+    needs: [node-ci, pwsh-ci, npm-package]
+    if: ${{ !cancelled() && needs.node-ci.result == 'success' && needs.pwsh-ci.result == 'success' && needs.npm-package.result != 'failure' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ci-*
+          path: artifacts
+
+      - name: Check the artifacts
+        shell: pwsh
+        env:
+          EXPECT_PACKAGE: ${{ needs.npm-package.result == 'success' }}
+        run: ./scripts/Test-CiArtifacts.ps1 -ExpectPackage:($env:EXPECT_PACKAGE -eq 'true')

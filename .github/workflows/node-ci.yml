@@ -1,0 +1,195 @@
+name: Node CI
+
+# Installs a Node project and runs its package.json scripts on each Node version and operating
+# system, then reports the test results and coverage. A final `Result` job gives branch
+# protection one check to require, whatever the matrix.
+#
+# The caller grants `contents: read`. See docs/node-ci.md.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Node project folder, relative to the repository root.
+        type: string
+        default: .
+      node-versions:
+        description: Node versions as a JSON list, e.g. `'["20", "22", "lts/*"]'`.
+        type: string
+        default: '["lts/*"]'
+      os:
+        description: Runner labels as a JSON list, e.g. `'["ubuntu-latest", "windows-latest"]'`.
+        type: string
+        default: '["ubuntu-latest"]'
+      package-manager:
+        description: '`npm`, `pnpm` or `yarn`. Empty detects it from the lockfile.'
+        type: string
+        default: ''
+      scripts:
+        description: package.json scripts to run in order, separated by spaces.
+        type: string
+        default: test
+      setup:
+        description: package.json scripts run with `npm run` before the install, separated by spaces.
+        type: string
+        default: ''
+      dependencies:
+        description: Local Node projects it depends on, one per line; each is installed and built first.
+        type: string
+        default: ''
+      pre-build:
+        description: Repository scripts run before the install, by path from the repository root, one per line. `.ps1` files run in PowerShell.
+        type: string
+        default: ''
+      post-build:
+        description: Repository scripts run after the package.json scripts, by path from the repository root, one per line.
+        type: string
+        default: ''
+      browser:
+        description: Provide a system Chromium for browser tests (Linux runners install it with apt-get).
+        type: boolean
+        default: false
+      test-results:
+        description: JUnit, NUnit or TRX results files, relative to `working-directory`, one per line. Empty skips the report.
+        type: string
+        default: ''
+      coverage-reports:
+        description: Cobertura, JaCoCo or LCOV reports, relative to `working-directory`, one per line. Empty finds the usual names when `minimum-coverage` is set.
+        type: string
+        default: ''
+      minimum-coverage:
+        description: Minimum line coverage percentage. `0` with no `coverage-reports` skips the coverage step.
+        type: string
+        default: '0'
+      check-clean:
+        description: Fail when the build changed or added files that are not ignored.
+        type: boolean
+        default: false
+      check-clean-paths:
+        description: Paths `check-clean` looks at, one per line. Empty checks the whole repository.
+        type: string
+        default: ''
+      cache:
+        description: setup-node dependency cache, `npm`. Empty turns caching off.
+        type: string
+        default: ''
+      cache-dependency-path:
+        description: Lockfile(s) for the cache key, from the repository root. Needed when the project is not at the root.
+        type: string
+        default: ''
+      artifacts:
+        description: Files to upload after the run (also when it fails), from the repository root, one per line. Empty uploads nothing.
+        type: string
+        default: ''
+      artifact-name:
+        description: Artifact name prefix; the OS and Node version are appended.
+        type: string
+        default: node-ci
+      fetch-depth:
+        description: Commits to fetch; 0 fetches all history.
+        type: number
+        default: 1
+      submodules:
+        description: '`true`, `recursive` or `false`, as for actions/checkout.'
+        type: string
+        default: 'false'
+      timeout-minutes:
+        description: Timeout of each test job.
+        type: number
+        default: 30
+
+permissions: {}
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+        node: ${{ fromJSON(inputs.node-versions) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: Node
+        id: node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: ${{ inputs.cache }}
+          cache-dependency-path: ${{ inputs.cache-dependency-path }}
+          package-manager-cache: false
+
+      - name: Pre-build
+        if: inputs.pre-build != ''
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.pre-build }}
+
+      - name: Build and test
+        uses: $/actions/node-scripts
+        with:
+          path: ${{ inputs.working-directory }}
+          scripts: ${{ inputs.scripts }}
+          setup: ${{ inputs.setup }}
+          dependencies: ${{ inputs.dependencies }}
+          package-manager: ${{ inputs.package-manager }}
+          browser: ${{ inputs.browser }}
+
+      - name: Post-build
+        if: inputs.post-build != ''
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.post-build }}
+
+      - name: Test report
+        if: ${{ !cancelled() && inputs.test-results != '' }}
+        uses: $/actions/test-report
+        with:
+          results: ${{ inputs.test-results }}
+          title: Tests (${{ matrix.os }}, Node ${{ matrix.node }})
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Coverage
+        if: inputs.coverage-reports != '' || inputs.minimum-coverage != '0'
+        uses: $/actions/coverage-gate
+        with:
+          reports: ${{ inputs.coverage-reports }}
+          minimum: ${{ inputs.minimum-coverage }}
+          title: Coverage (${{ matrix.os }}, Node ${{ matrix.node }})
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Check clean
+        if: inputs.check-clean
+        uses: $/actions/check-clean
+        with:
+          paths: ${{ inputs.check-clean-paths }}
+
+      # `lts/*` cannot be part of an artifact name; the resolved version can.
+      - name: Upload
+        if: ${{ !cancelled() && inputs.artifacts != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-name }}-${{ matrix.os }}-node-${{ steps.node.outputs.node-version }}
+          path: ${{ inputs.artifacts }}
+          if-no-files-found: warn
+
+  result:
+    name: Result
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - uses: $/actions/needs-gate
+        with:
+          needs: ${{ toJSON(needs) }}

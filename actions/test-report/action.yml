@@ -1,0 +1,56 @@
+name: Test report
+description: Summarise JUnit, NUnit or TRX test results in the job summary and annotate failed tests. Optionally fails the step on failed tests.
+author: The-Running-Dev
+
+inputs:
+  results:
+    description: Test results files, relative to `working-directory`, one per line. Wildcards are allowed and `**/` searches folders.
+    required: true
+  title:
+    description: Heading of the job summary section.
+    required: false
+    default: Tests
+  fail-on-failure:
+    description: '`true` fails the step when a test failed. Off by default because the test step usually fails already.'
+    required: false
+    default: 'false'
+  fail-on-missing:
+    description: '`true` fails the step when no results file is found; otherwise it warns.'
+    required: false
+    default: 'false'
+  annotate:
+    description: '`true` writes an error annotation for each failed test (at most 10).'
+    required: false
+    default: 'true'
+  working-directory:
+    description: Folder the paths are relative to, relative to the workspace.
+    required: false
+    default: .
+
+outputs:
+  total:
+    description: Number of tests.
+    value: ${{ steps.report.outputs.total }}
+  passed:
+    description: Number of passed tests.
+    value: ${{ steps.report.outputs.passed }}
+  failed:
+    description: Number of failed tests.
+    value: ${{ steps.report.outputs.failed }}
+  skipped:
+    description: Number of skipped tests.
+    value: ${{ steps.report.outputs.skipped }}
+
+runs:
+  using: composite
+  steps:
+    - id: report
+      shell: pwsh
+      env:
+        INPUT_RESULTS: ${{ inputs.results }}
+        INPUT_TITLE: ${{ inputs.title }}
+        INPUT_FAIL_ON_FAILURE: ${{ inputs.fail-on-failure }}
+        INPUT_FAIL_ON_MISSING: ${{ inputs.fail-on-missing }}
+        INPUT_ANNOTATE: ${{ inputs.annotate }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH test-report.ps1)'
