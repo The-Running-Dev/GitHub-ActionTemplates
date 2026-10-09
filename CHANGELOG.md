@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-09
+
 ### Added
 - `node-ci.yml` reusable workflow: installs a Node project and runs its scripts on an OS × Node
   matrix, then reports test results, gates coverage, optionally checks for a clean tree and
