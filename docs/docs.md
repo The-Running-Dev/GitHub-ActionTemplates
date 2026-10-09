@@ -68,7 +68,7 @@ listed in [`actions/docs-build/template/package.json`](../actions/docs-build/tem
 | `node-project` | | Node project folder whose scripts run after the build, for example a site that checks or merges the built docs ([`node-scripts`](../actions/node-scripts/README.md)). |
 | `node-scripts` | `build` | package.json scripts `node-project` runs, in order. |
 | `node-dependencies` | | Local Node projects `node-project` depends on, one per line; each is installed and built first. |
-| `browser` | `false` | `true` provides a system Chromium to `node-project` for browser tests. |
+| `browser` | `false` | `true` provides a system Chromium or Chrome to `node-project` for browser tests. |
 | `post-build` | | Repository scripts run from the repository root after the build, by path, one per line. |
 | `deploy` | `true` | `false` only builds and uploads the artifact. |
 | `image` | build-agent, by digest | Container image for the build job. It needs PowerShell 7, git and Node, and `build` for the `template` builder. |
