@@ -48,6 +48,7 @@ Complete caller workflows are in [examples/](examples).
 | [`npm-pack`](actions/npm-pack/README.md) | Packs a Node project into a tarball, optionally stamping a computed version. |
 | [`npm-publish`](actions/npm-publish/README.md) | Publishes a tarball to npmjs or GitHub Packages with provenance and a dist-tag from the version. |
 | [`github-release`](actions/github-release/README.md) | Creates or updates the GitHub release for a tag with CHANGELOG notes and attachments. |
+| [`gates`](actions/gates/README.md) | Checks the committed [gates file](docs/gates.md) against the commands the workflows run. |
 
 The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners
 (`docs-build` with the `template` builder runs in the build-agent container).

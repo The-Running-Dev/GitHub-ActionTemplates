@@ -41,7 +41,8 @@ In branch protection, require **`ci / Result`** (the caller's job name, then `Re
 
 ## What runs
 
-1. Checkout.
+1. Checkout, then the [gates check](gates.md) (first matrix job, when `.github/gates.json`
+   exists).
 2. `pre-build` repository scripts.
 3. [`pwsh-check`](../actions/pwsh-check/README.md) on `paths`: every `.ps1`, `.psm1` and
    `.psd1` is parsed, and with `analyzer: true` PSScriptAnalyzer runs too. Each problem is
@@ -74,6 +75,7 @@ In branch protection, require **`ci / Result`** (the caller's job name, then `Re
 | `pre-build` | | Repository scripts run before the checks, by path from the repository root, one per line. |
 | `post-build` | | Repository scripts run after the tests. |
 | `artifact-name` | `pester` | Artifact name prefix; the OS is appended. |
+| `gates-file` | `.github/gates.json` | [Gates file](gates.md) checked against the workflows when it exists; empty turns the check off. |
 | `fetch-depth` | `1` | Commits to fetch; 0 fetches all history. |
 | `submodules` | `false` | `true`, `recursive` or `false`. |
 | `timeout-minutes` | `30` | Timeout of each test job. |

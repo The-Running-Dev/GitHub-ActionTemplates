@@ -85,6 +85,10 @@ on:
         description: Artifact name prefix; the OS and Node version are appended.
         type: string
         default: node-ci
+      gates-file:
+        description: Gates file checked against the workflows that call this library (see docs/gates.md). Skipped when the file does not exist; empty turns the check off.
+        type: string
+        default: .github/gates.json
       fetch-depth:
         description: Commits to fetch; 0 fetches all history.
         type: number
@@ -118,6 +122,13 @@ jobs:
           fetch-depth: ${{ inputs.fetch-depth }}
           submodules: ${{ inputs.submodules }}
           persist-credentials: false
+
+      # Once per run: the check reads the caller's workflows, which no matrix entry changes.
+      - name: Gates
+        if: strategy.job-index == 0 && inputs.gates-file != '' && hashFiles(inputs.gates-file) != ''
+        uses: $/actions/gates
+        with:
+          file: ${{ inputs.gates-file }}
 
       - name: Node
         id: node

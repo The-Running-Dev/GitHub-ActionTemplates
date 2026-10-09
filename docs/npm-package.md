@@ -85,6 +85,7 @@ tag (`git tag v1.2.3 && git push origin v1.2.3`).
 | `changelog` | `CHANGELOG.md` | CHANGELOG with the release notes, from the repository root. |
 | `tag-prefix` | `v` | Prefix of release tags. |
 | `artifact-name` | `npm-package` | Name of the tarball artifact. |
+| `gates-file` | `.github/gates.json` | [Gates file](gates.md) checked against the workflows when it exists; empty turns the check off. |
 | `fetch-depth` | `1` | Commits to fetch. |
 | `submodules` | `false` | `true`, `recursive` or `false`. |
 | `timeout-minutes` | `30` | Timeout of the build job. |
