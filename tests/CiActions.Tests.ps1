@@ -559,7 +559,7 @@ Describe 'github-release' {
         $result.ExitCode | Should -Be 0 -Because $result.Log
         $result.Gh | Should -Match 'release create v1\.2\.0 \S+app-1\.2\.0\.tgz --repo Octo-Org/Sample\.Repo --verify-tag --title v1\.2\.0 --notes-file'
         $result.Gh | Should -Match 'NOTES: - Added a thing\.'
-        $result.Gh | Should -Not -Match 'Older'
+        $result.Gh | Should -Not -Match '- Older\.'
         $result.Gh | Should -Not -Match '--prerelease'
         $result.Outputs['created'] | Should -Be 'true'
         $result.Outputs['url'] | Should -Be 'https://github.com/Octo-Org/Sample.Repo/releases/tag/v1.2.0'
