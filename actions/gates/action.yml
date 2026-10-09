@@ -1,0 +1,41 @@
+name: Gates
+description: Check that the committed gates file lists the commands the repository's workflows run, so local verification runs the same gates as CI.
+author: The-Running-Dev
+
+inputs:
+  file:
+    description: Gates file, relative to the workspace.
+    required: false
+    default: .github/gates.json
+  workflows:
+    description: Folder of the workflows the gates are derived from, relative to the workspace.
+    required: false
+    default: .github/workflows
+  write:
+    description: Write the gates file instead of checking it.
+    required: false
+    default: 'false'
+  yaml-version:
+    description: powershell-yaml version used to read the workflows.
+    required: false
+    default: 0.4.12
+
+outputs:
+  status:
+    description: '`match` when the file was checked, `written` when it was written.'
+    value: ${{ steps.gates.outputs.status }}
+  count:
+    description: Number of gates.
+    value: ${{ steps.gates.outputs.count }}
+
+runs:
+  using: composite
+  steps:
+    - id: gates
+      shell: pwsh
+      env:
+        INPUT_FILE: ${{ inputs.file }}
+        INPUT_WORKFLOWS: ${{ inputs.workflows }}
+        INPUT_WRITE: ${{ inputs.write }}
+        INPUT_YAML_VERSION: ${{ inputs.yaml-version }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH gates.ps1)'

@@ -40,7 +40,8 @@ does not change when the matrix does, and it fails when any matrix job fails.
 
 ## What runs
 
-1. Checkout, then `setup-node` with the matrix Node version.
+1. Checkout, then the [gates check](gates.md) (first matrix job, when `.github/gates.json`
+   exists), then `setup-node` with the matrix Node version.
 2. `pre-build` repository scripts.
 3. [`node-scripts`](../actions/node-scripts/README.md) in `working-directory`: builds the local
    `dependencies`, then runs the `setup` scripts, the install (`npm ci`,
@@ -94,6 +95,7 @@ Vitest (`--reporter=junit`, `--coverage.reporter=cobertura`) and Jest (`jest-jun
 | `cache-dependency-path` | | Lockfile for the cache key, from the repository root. Needed when the project is not at the root. |
 | `artifacts` | | Files to upload, from the repository root, one per line. |
 | `artifact-name` | `node-ci` | Artifact name prefix; the OS and Node version are appended. |
+| `gates-file` | `.github/gates.json` | [Gates file](gates.md) checked against the workflows when it exists; empty turns the check off. |
 | `fetch-depth` | `1` | Commits to fetch; 0 fetches all history. |
 | `submodules` | `false` | `true`, `recursive` or `false`. |
 | `timeout-minutes` | `30` | Timeout of each test job. |

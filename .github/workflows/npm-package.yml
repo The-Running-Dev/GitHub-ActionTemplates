@@ -78,6 +78,10 @@ on:
         description: Name of the tarball artifact.
         type: string
         default: npm-package
+      gates-file:
+        description: Gates file checked against the workflows that call this library (see docs/gates.md). Skipped when the file does not exist; empty turns the check off.
+        type: string
+        default: .github/gates.json
       fetch-depth:
         description: Commits to fetch; 0 fetches all history.
         type: number
@@ -125,6 +129,12 @@ jobs:
           fetch-depth: ${{ inputs.fetch-depth }}
           submodules: ${{ inputs.submodules }}
           persist-credentials: false
+
+      - name: Gates
+        if: inputs.gates-file != '' && hashFiles(inputs.gates-file) != ''
+        uses: $/actions/gates
+        with:
+          file: ${{ inputs.gates-file }}
 
       - name: Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
