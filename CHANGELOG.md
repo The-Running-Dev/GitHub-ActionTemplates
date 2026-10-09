@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-09
+
 ### Added
 - `actions/gates` and [`docs/gates.md`](docs/gates.md): a repository commits
   `.github/gates.json`, the commands its CI runs, for local verification to read. The action
