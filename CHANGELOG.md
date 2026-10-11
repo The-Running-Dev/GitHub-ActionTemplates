@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-11
+
 ### Fixed
 - `browser: true` on `node-ci.yml` and `actions/node-scripts` works on Windows and macOS: it
   finds Chrome in its install folders (the runner images ship it outside `PATH`) instead of
