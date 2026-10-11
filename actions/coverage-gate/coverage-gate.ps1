@@ -20,7 +20,7 @@ if (-not $patterns) { throw "Set 'reports' to one or more coverage report paths.
 
 # Patterns are relative to the working directory, which must be inside the workspace.
 $workingDirectory = Get-ActionInput 'working-directory' '.'
-$base = if ($workingDirectory -in '.', './') { $workspace } else { Resolve-WorkspacePath $workingDirectory $workspace 'working-directory' }
+$base = Resolve-WorkspacePath $workingDirectory $workspace 'working-directory' -AllowRoot
 $files = Find-WorkspaceFile -Pattern $patterns -Workspace $base
 if (-not $files) {
     Set-ActionOutput 'coverage' ''

@@ -12,7 +12,7 @@ $version = Get-ActionInput 'version'
 $destination = Get-ActionInput 'destination' 'dist-package'
 $ignoreScripts = (Get-ActionInput 'ignore-scripts' 'false') -eq 'true'
 
-$projectPath = if ($project -in '.', './') { $workspace } else { Resolve-WorkspacePath $project $workspace 'path' }
+$projectPath = Resolve-WorkspacePath $project $workspace 'path' -AllowRoot
 if (-not (Test-Path -LiteralPath (Join-Path $projectPath 'package.json') -PathType Leaf)) { throw "The path '$project' has no package.json." }
 $destinationPath = Resolve-WorkspacePath $destination $workspace 'destination'
 [void] (New-Item -ItemType Directory -Force -Path $destinationPath)

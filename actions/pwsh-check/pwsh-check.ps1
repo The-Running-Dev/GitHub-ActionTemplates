@@ -29,8 +29,7 @@ function Test-Excluded([string] $Relative) {
 
 $files = [System.Collections.Generic.SortedSet[string]]::new([System.StringComparer]::Ordinal)
 foreach ($entry in $paths) {
-    # The workspace root itself is allowed here; Resolve-WorkspacePath only accepts paths inside it.
-    $full = if ($entry -in '.', './') { $workspace } else { Resolve-WorkspacePath $entry $workspace 'path' }
+    $full = Resolve-WorkspacePath $entry $workspace 'path' -AllowRoot
     if (Test-Path -LiteralPath $full -PathType Leaf) { [void] $files.Add($full); continue }
     if (-not (Test-Path -LiteralPath $full -PathType Container)) { throw "The path '$entry' does not exist." }
     # Walked by hand so .git, node_modules and excluded folders are never entered.

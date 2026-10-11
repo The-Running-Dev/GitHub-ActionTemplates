@@ -24,12 +24,12 @@ if (-not $paths) { throw "Set 'path' to the test folders or files." }
 function Get-RelativePath([string] $Path) { [System.IO.Path]::GetRelativePath($workspace, $Path).Replace('\', '/') }
 
 $testPaths = foreach ($entry in $paths) {
-    $full = Resolve-WorkspacePath $entry $workspace 'path'
+    $full = Resolve-WorkspacePath $entry $workspace 'path' -AllowRoot
     if (-not (Test-Path -LiteralPath $full)) { throw "The test path '$entry' does not exist." }
     $full
 }
 $coveragePaths = foreach ($entry in $coverage) {
-    $full = Resolve-WorkspacePath $entry $workspace 'coverage'
+    $full = Resolve-WorkspacePath $entry $workspace 'coverage' -AllowRoot
     if (-not (Test-Path -LiteralPath $full)) { throw "The coverage path '$entry' does not exist." }
     $full
 }

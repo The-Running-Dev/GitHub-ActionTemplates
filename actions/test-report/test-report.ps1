@@ -17,7 +17,7 @@ if (-not $patterns) { throw "Set 'results' to one or more test results paths." }
 
 # Patterns are relative to the working directory, which must be inside the workspace.
 $workingDirectory = Get-ActionInput 'working-directory' '.'
-$base = if ($workingDirectory -in '.', './') { $workspace } else { Resolve-WorkspacePath $workingDirectory $workspace 'working-directory' }
+$base = Resolve-WorkspacePath $workingDirectory $workspace 'working-directory' -AllowRoot
 $files = Find-WorkspaceFile -Pattern $patterns -Workspace $base
 if (-not $files) {
     foreach ($name in 'total', 'passed', 'failed', 'skipped') { Set-ActionOutput $name '0' }

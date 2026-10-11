@@ -286,20 +286,22 @@ function Resolve-WorkspacePath {
     .SYNOPSIS
     Resolves a path relative to the workspace and fails when it is not strictly inside it.
     Inputs come from callers, so `..`, absolute paths elsewhere and the workspace root itself
-    are rejected.
+    are rejected. -AllowRoot accepts the root, for inputs that only read from the folder.
     #>
     [CmdletBinding()]
     [OutputType([string])]
     param(
         [Parameter(Mandatory)][string] $Path,
         [Parameter(Mandatory)][string] $Workspace,
-        [string] $Name = 'path'
+        [string] $Name = 'path',
+        [switch] $AllowRoot
     )
 
     $root = [System.IO.Path]::TrimEndingDirectorySeparator([System.IO.Path]::GetFullPath($Workspace))
     $full = [System.IO.Path]::TrimEndingDirectorySeparator([System.IO.Path]::GetFullPath($Path, $root))
     $comparison = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
 
+    if ($AllowRoot -and $full.Equals($root, $comparison)) { return $full }
     if (-not $full.StartsWith($root + [System.IO.Path]::DirectorySeparatorChar, $comparison)) {
         throw "The $Name '$Path' must be inside the workspace '$root'."
     }

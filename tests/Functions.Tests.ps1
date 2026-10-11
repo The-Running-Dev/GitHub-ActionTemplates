@@ -204,6 +204,18 @@ Describe 'Resolve-WorkspacePath' {
     It 'rejects an absolute path outside the workspace' {
         { Resolve-WorkspacePath (Join-Path $TestDrive 'other') $Workspace } | Should -Throw '*inside the workspace*'
     }
+
+    It 'accepts the workspace root as <Path> with -AllowRoot' -ForEach @(
+        @{ Path = '.' }
+        @{ Path = './' }
+        @{ Path = 'docs/..' }
+    ) {
+        Resolve-WorkspacePath $Path $Workspace -AllowRoot | Should -Be ([System.IO.Path]::GetFullPath($Workspace))
+    }
+
+    It 'still rejects a path outside the workspace with -AllowRoot' {
+        { Resolve-WorkspacePath '..' $Workspace -AllowRoot } | Should -Throw '*inside the workspace*'
+    }
 }
 
 Describe 'Split-ActionList' {

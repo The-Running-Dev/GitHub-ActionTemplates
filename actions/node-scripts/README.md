@@ -48,4 +48,4 @@ installed before the step. The test tooling must read one of those variables.
 | `package-manager` | from each lockfile | `npm`, `pnpm` or `yarn`. |
 | `browser` | `false` | `true` provides a system Chromium or Chrome. |
 
-All folders must be inside the workspace and contain a `package.json`.
+All folders must be inside the workspace (the root itself is allowed) and contain a `package.json`.
