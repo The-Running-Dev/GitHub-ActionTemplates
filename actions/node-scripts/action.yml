@@ -24,8 +24,9 @@ inputs:
     default: ''
   browser:
     description: >-
-      `true` finds a system Chromium (installing the `chromium` package with apt-get when there is none) and
-      exposes it to the scripts as PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, PUPPETEER_EXECUTABLE_PATH and CHROME_BIN.
+      `true` finds a system Chromium or Chrome (on PATH, then in the Windows and macOS install folders; on Linux
+      installing the `chromium` package with apt-get when there is none) and exposes it to the scripts as
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, PUPPETEER_EXECUTABLE_PATH, CHROME_BIN and CHROME_PATH.
     required: false
     default: 'false'
 

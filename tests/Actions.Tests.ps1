@@ -556,4 +556,59 @@ Describe 'node-scripts' {
         $result.Log | Should -Match ([regex]::Escape($Message))
         Join-Path $workspace 'order.txt' | Should -Not -Exist
     }
+
+    Context 'browser' {
+        BeforeAll {
+            # PATH holds only Node and pwsh, and the per-user install folders point into the test
+            # drive, so the browser found is the one each test places. Windows sets ProgramFiles
+            # for every process itself, so a Chrome installed there is real and the tests skip.
+            # npm runs scripts with sh, which it finds on PATH outside Windows.
+            $script:SearchPath = @((Split-Path (Get-Command node).Source), $PSHOME, $(if (-not $IsWindows) { '/bin' })) -join [System.IO.Path]::PathSeparator
+            $script:InstalledBrowser = @(
+                Get-Command chromium, chromium-browser, google-chrome-stable, google-chrome, chrome -CommandType Application -ErrorAction SilentlyContinue |
+                    Where-Object { (Split-Path $_.Source) -in ($SearchPath -split [System.IO.Path]::PathSeparator) } |
+                    ForEach-Object Source
+                if ($env:ProgramFiles) {
+                    Join-Path $env:ProgramFiles 'Google' 'Chrome' 'Application' 'chrome.exe'
+                    Join-Path $env:ProgramFiles 'Chromium' 'Application' 'chrome.exe'
+                }
+            ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+
+            function Invoke-BrowserScript([string] $Workspace) {
+                $report = "node -e `"require('fs').writeFileSync('../browser.txt', process.env.CHROME_BIN + '|' + process.env.CHROME_PATH)`""
+                New-NodeProject (Join-Path $Workspace 'site') @() @{ report = $report }
+                Invoke-NodeScript $Workspace @{
+                    INPUT_PATH          = 'site'
+                    INPUT_SCRIPTS       = 'report'
+                    INPUT_BROWSER       = 'true'
+                    PATH                = $SearchPath
+                    'ProgramFiles(x86)' = Join-Path $Workspace 'ProgramFiles86'
+                    LOCALAPPDATA        = Join-Path $Workspace 'LocalAppData'
+                }
+            }
+        }
+
+        It 'finds Chrome in its install folder and exposes it to the scripts' {
+            if ($InstalledBrowser) { Set-ItResult -Skipped -Because "a browser is installed at $InstalledBrowser" }
+            $workspace = Join-Path $TestDrive 'browser-installed'
+            $chrome = Join-Path $workspace 'LocalAppData' 'Google' 'Chrome' 'Application' 'chrome.exe'
+            New-Item -ItemType File -Path $chrome -Force | Out-Null
+
+            $result = Invoke-BrowserScript $workspace
+
+            $result.ExitCode | Should -Be 0 -Because $result.Log
+            Get-Content -LiteralPath (Join-Path $workspace 'browser.txt') -Raw | Should -BeExactly "$chrome|$chrome"
+        }
+
+        It 'fails on Windows when there is no browser' -Skip:(-not $IsWindows) {
+            if ($InstalledBrowser) { Set-ItResult -Skipped -Because "a browser is installed at $InstalledBrowser" }
+            $workspace = Join-Path $TestDrive 'browser-missing'
+
+            $result = Invoke-BrowserScript $workspace
+
+            $result.ExitCode | Should -Not -Be 0
+            $result.Log | Should -Match 'No Chromium or Chrome found'
+            Join-Path $workspace 'browser.txt' | Should -Not -Exist
+        }
+    }
 }

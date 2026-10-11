@@ -27,12 +27,15 @@ from its lockfile unless `package-manager` is set. When pnpm or yarn is not inst
 
 ## Browser tests
 
-`browser: true` finds a system Chromium (`chromium`, `chromium-browser`, `google-chrome-stable`
-or `google-chrome`) and exposes it to the scripts as `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`,
-`PUPPETEER_EXECUTABLE_PATH` and `CHROME_BIN`. Without one, it installs the `chromium` and
-`fonts-liberation` packages with apt-get (with `sudo` unless it runs as root), so it works on
-Ubuntu runners and in the build-agent container. The test tooling must read one of those
-variables.
+`browser: true` finds a system Chromium or Chrome and exposes it to the scripts as
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, `PUPPETEER_EXECUTABLE_PATH`, `CHROME_BIN` and `CHROME_PATH`.
+It looks on `PATH` (`chromium`, `chromium-browser`, `google-chrome-stable`, `google-chrome`,
+`chrome`), then in the install folders Windows and macOS use (`Google\Chrome\Application\chrome.exe`
+under Program Files or the local app data folder, `/Applications/Google Chrome.app`), so it uses the
+Chrome the Windows and macOS runner images ship. On Linux without one, it installs the `chromium`
+and `fonts-liberation` packages with apt-get (with `sudo` unless it runs as root), so it works on
+Ubuntu runners and in the build-agent container. Elsewhere it fails, and a browser must be
+installed before the step. The test tooling must read one of those variables.
 
 ## Inputs
 
@@ -43,6 +46,6 @@ variables.
 | `setup` | none | package.json scripts to run before the install, separated by spaces or new lines. |
 | `dependencies` | none | Local Node project folders to build first, one per line. |
 | `package-manager` | from each lockfile | `npm`, `pnpm` or `yarn`. |
-| `browser` | `false` | `true` provides a system Chromium. |
+| `browser` | `false` | `true` provides a system Chromium or Chrome. |
 
 All folders must be inside the workspace and contain a `package.json`.

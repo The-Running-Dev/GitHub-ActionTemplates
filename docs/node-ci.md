@@ -85,7 +85,7 @@ Vitest (`--reporter=junit`, `--coverage.reporter=cobertura`) and Jest (`jest-jun
 | `dependencies` | | Local Node projects it depends on, one per line; each is installed and built first. |
 | `pre-build` | | Repository scripts run before the install, by path from the repository root, one per line. `.ps1` files run in PowerShell. |
 | `post-build` | | Repository scripts run after the package.json scripts. |
-| `browser` | `false` | Provide a system Chromium for browser tests (Linux runners install it with apt-get). |
+| `browser` | `false` | Provide a system Chromium or Chrome for browser tests, as `CHROME_BIN`, `CHROME_PATH`, `PUPPETEER_EXECUTABLE_PATH` and `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. Windows and macOS runners use the installed Chrome; Linux installs Chromium with apt-get when there is none. |
 | `test-results` | | JUnit, NUnit or TRX results files, relative to `working-directory`. Empty skips the report. |
 | `coverage-reports` | | Cobertura, JaCoCo or LCOV reports, relative to `working-directory`. |
 | `minimum-coverage` | `'0'` | Minimum line coverage percentage. |

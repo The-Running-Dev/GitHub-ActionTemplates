@@ -46,7 +46,7 @@ on:
         type: string
         default: ''
       browser:
-        description: Provide a system Chromium for browser tests (Linux runners install it with apt-get).
+        description: Provide a system Chromium or Chrome for browser tests (Windows and macOS runners use the installed Chrome; Linux installs Chromium with apt-get when there is none).
         type: boolean
         default: false
       test-results:

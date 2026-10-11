@@ -42,11 +42,22 @@ function Invoke-Project([string] $Path, [string[]] $Scripts, [string[]] $Setup =
 }
 
 function Find-Chromium {
-    foreach ($name in 'chromium', 'chromium-browser', 'google-chrome-stable', 'google-chrome') {
+    foreach ($name in 'chromium', 'chromium-browser', 'google-chrome-stable', 'google-chrome', 'chrome') {
         $command = Get-Command $name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($command) { return $command.Source }
     }
-    return $null
+    # Windows and macOS install Chrome outside PATH; the hosted runner images ship it there.
+    $locations = @(
+        foreach ($root in $env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA) {
+            if ($root) {
+                Join-Path $root 'Google' 'Chrome' 'Application' 'chrome.exe'
+                Join-Path $root 'Chromium' 'Application' 'chrome.exe'
+            }
+        }
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+        '/Applications/Chromium.app/Contents/MacOS/Chromium'
+    )
+    return $locations | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
 }
 
 # Paths are checked before anything is installed.
@@ -57,7 +68,7 @@ if ($browser) {
     $chromium = Find-Chromium
     if (-not $chromium) {
         if (-not ($IsLinux -and (Get-Command apt-get -ErrorAction SilentlyContinue))) {
-            throw "No Chromium found, and it can only be installed with apt-get on Linux. Install a browser before this step."
+            throw "No Chromium or Chrome found on PATH or in the usual install folders, and it can only be installed with apt-get on Linux. Install a browser before this step."
         }
         # GitHub-hosted runners need sudo; a container job runs as root, which may have no sudo.
         $root = (id -u) -eq '0'
@@ -76,6 +87,7 @@ if ($browser) {
     $env:PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = $chromium
     $env:PUPPETEER_EXECUTABLE_PATH = $chromium
     $env:CHROME_BIN = $chromium
+    $env:CHROME_PATH = $chromium
 }
 
 foreach ($dependency in $dependencyPaths) { Invoke-Project $dependency @('build') }
