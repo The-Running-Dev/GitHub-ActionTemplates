@@ -519,6 +519,18 @@ Describe 'node-scripts' {
         $result.Summary | Should -Match ([regex]::Escape('Ran `check`, `merge` in `site`.'))
     }
 
+    It 'runs the scripts of a project at the workspace root' {
+        $workspace = Join-Path $TestDrive 'root'
+        $report = "node -e `"require('fs').writeFileSync('ran.txt', 'root')`""
+        New-NodeProject $workspace @() @{ report = $report }
+
+        $result = Invoke-NodeScript $workspace @{ INPUT_PATH = '.'; INPUT_SCRIPTS = 'report' }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        Get-Content -LiteralPath (Join-Path $workspace 'ran.txt') -Raw | Should -Be 'root'
+        $result.Summary | Should -Match ([regex]::Escape('Ran `report` in `.`.'))
+    }
+
     It 'runs the setup scripts before the install' {
         $workspace = Join-Path $TestDrive 'setup'
         New-NodeProject (Join-Path $workspace 'site') 'vendor', 'preinstall', 'build'

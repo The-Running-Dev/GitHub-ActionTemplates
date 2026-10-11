@@ -12,7 +12,7 @@ $workingDirectory = Get-ActionInput 'working-directory'
 
 if (-not $scripts) { throw "No scripts given. Set 'scripts' to one or more script paths." }
 
-$location = if ($workingDirectory) { Resolve-WorkspacePath $workingDirectory $workspace 'working-directory' } else { $workspace }
+$location = if ($workingDirectory) { Resolve-WorkspacePath $workingDirectory $workspace 'working-directory' -AllowRoot } else { $workspace }
 if (-not (Test-Path -LiteralPath $location -PathType Container)) { throw "The working-directory '$workingDirectory' does not exist." }
 
 # Every path is checked before the first script runs, so a typo fails fast.

@@ -17,7 +17,7 @@ $browser = (Get-ActionInput 'browser' 'false') -eq 'true'
 if (-not $project) { throw "Set 'path' to the Node project folder." }
 
 function Resolve-Project([string] $Folder, [string] $Name) {
-    $path = Resolve-WorkspacePath $Folder $workspace $Name
+    $path = Resolve-WorkspacePath $Folder $workspace $Name -AllowRoot
     if (-not (Test-Path -LiteralPath (Join-Path $path 'package.json') -PathType Leaf)) {
         throw "The $Name '$Folder' has no package.json."
     }

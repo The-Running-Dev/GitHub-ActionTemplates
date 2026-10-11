@@ -10,6 +10,10 @@ section for its version.
 - `browser: true` on `node-ci.yml` and `actions/node-scripts` works on Windows and macOS: it
   finds Chrome in its install folders (the runner images ship it outside `PATH`) instead of
   failing because apt-get is Linux only. The browser is also exposed as `CHROME_PATH`.
+- A Node project at the repository root (`working-directory: .`, the default) works on
+  `node-ci.yml`, `npm-package.yml` and `actions/node-scripts`; it failed with "must be inside
+  the workspace". `actions/pester` test and coverage paths and `actions/run-scripts`
+  `working-directory` accept `.` too.
 
 ## [0.5.0] - 2026-10-09
 
