@@ -1,0 +1,76 @@
+name: Webhook deploy
+description: Call a redeploy webhook (Portainer, Coolify and the like) with retries, then wait until a health URL answers as expected.
+author: The-Running-Dev
+
+inputs:
+  url:
+    description: Redeploy webhook URL. Pass it from a secret; it is masked and never printed. Empty only waits for `health-url`.
+    required: false
+    default: ''
+  method:
+    description: HTTP method of the webhook call. `POST`, `GET` or `PUT`.
+    required: false
+    default: POST
+  retries:
+    description: Extra attempts when the webhook fails or answers outside 2xx.
+    required: false
+    default: '3'
+  retry-delay:
+    description: Seconds between webhook attempts.
+    required: false
+    default: '10'
+  timeout:
+    description: Seconds each request may take.
+    required: false
+    default: '30'
+  health-url:
+    description: URL to poll after the webhook. Empty skips the wait.
+    required: false
+    default: ''
+  health-status:
+    description: Status codes that count as healthy, separated by spaces, or `any`.
+    required: false
+    default: '200'
+  health-expect:
+    description: Text the response body must contain, for example the commit SHA a version endpoint reports. Empty checks the status only.
+    required: false
+    default: ''
+  health-timeout:
+    description: Seconds to wait for the health URL.
+    required: false
+    default: '300'
+  health-interval:
+    description: Seconds between health checks.
+    required: false
+    default: '10'
+  health-consecutive:
+    description: Healthy answers needed in a row.
+    required: false
+    default: '1'
+
+outputs:
+  webhook-status:
+    description: Status code the webhook answered with.
+    value: ${{ steps.deploy.outputs.webhook-status }}
+  health-status:
+    description: Status code of the last health check.
+    value: ${{ steps.deploy.outputs.health-status }}
+
+runs:
+  using: composite
+  steps:
+    - id: deploy
+      shell: pwsh
+      env:
+        INPUT_URL: ${{ inputs.url }}
+        INPUT_METHOD: ${{ inputs.method }}
+        INPUT_RETRIES: ${{ inputs.retries }}
+        INPUT_RETRY_DELAY: ${{ inputs.retry-delay }}
+        INPUT_TIMEOUT: ${{ inputs.timeout }}
+        INPUT_HEALTH_URL: ${{ inputs.health-url }}
+        INPUT_HEALTH_STATUS: ${{ inputs.health-status }}
+        INPUT_HEALTH_EXPECT: ${{ inputs.health-expect }}
+        INPUT_HEALTH_TIMEOUT: ${{ inputs.health-timeout }}
+        INPUT_HEALTH_INTERVAL: ${{ inputs.health-interval }}
+        INPUT_HEALTH_CONSECUTIVE: ${{ inputs.health-consecutive }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH webhook-deploy.ps1)'

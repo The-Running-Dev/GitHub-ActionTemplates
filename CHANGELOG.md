@@ -6,6 +6,18 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `container.yml` reusable workflow: builds an image with Buildx, starts it and smoke-tests it
+  (HEALTHCHECK, HTTP probe, scripts inside the container and against it), then pushes the image
+  that was tested from the default branch and tags, with optional multi-platform rebuild, cosign
+  signature and build provenance attestation. A deploy job calls a redeploy webhook and waits for
+  a health URL; a `Result` job gives branch protection one check. See
+  [`docs/container.md`](docs/container.md).
+- Actions `image-meta` (tags and OCI labels), `image-gate` (container smoke test),
+  `image-archive` (hand an image between jobs, checking its ID), `branch-tip-gate` (hold back a
+  build that is no longer the branch head), `image-push` (push, digest, cosign) and
+  `webhook-deploy` (webhook with retries, then a health check).
+
 ## [0.5.1] - 2026-10-11
 
 ### Fixed

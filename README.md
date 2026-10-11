@@ -6,7 +6,7 @@ call a template, with every decision (version, publish or not, image name) made 
 in every repository.
 
 > **Status: 0.x.** The workflows and actions below are usable now. More reusable workflows
-> (.NET, Docker image, static sites) arrive in later 0.x releases, see
+> (.NET, static sites) arrive in later 0.x releases, see
 > [docs/PLAN.md](docs/PLAN.md). Inputs may still change before `v1.0.0`.
 
 ## Workflows
@@ -17,6 +17,7 @@ in every repository.
 | [`node-ci.yml`](docs/node-ci.md) | Runs a Node project's scripts on an OS × Node matrix, with test report, coverage gate and clean-tree check. |
 | [`pwsh-ci.yml`](docs/pwsh-ci.md) | Syntax-checks PowerShell files, optionally runs PSScriptAnalyzer, and runs Pester with coverage on each OS. |
 | [`npm-package.yml`](docs/npm-package.md) | Tests and packs an npm package, publishes it from tags (npmjs or GitHub Packages) and creates the GitHub release. |
+| [`container.yml`](docs/container.md) | Builds and smoke-tests an image, pushes the tested image from the branch tip and tags, and can redeploy through a webhook. |
 
 ```yaml
 jobs:
@@ -49,6 +50,12 @@ Complete caller workflows are in [examples/](examples).
 | [`npm-publish`](actions/npm-publish/README.md) | Publishes a tarball to npmjs or GitHub Packages with provenance and a dist-tag from the version. |
 | [`github-release`](actions/github-release/README.md) | Creates or updates the GitHub release for a tag with CHANGELOG notes and attachments. |
 | [`gates`](actions/gates/README.md) | Checks the committed [gates file](docs/gates.md) against the commands the workflows run. |
+| [`image-meta`](actions/image-meta/README.md) | Works out an image's tags (sha, version, latest and others) and OCI labels from the run. |
+| [`image-gate`](actions/image-gate/README.md) | Starts an image, waits until it is ready (HEALTHCHECK, HTTP probe) and runs scripts inside it. |
+| [`image-archive`](actions/image-archive/README.md) | Saves a built image with its ID and loads it in another job, failing if the ID changed. |
+| [`branch-tip-gate`](actions/branch-tip-gate/README.md) | Holds back a branch build that is no longer the branch head, so an older run cannot overwrite `latest`. |
+| [`image-push`](actions/image-push/README.md) | Pushes every tag of a local image, reports the digest and optionally signs it with cosign. |
+| [`webhook-deploy`](actions/webhook-deploy/README.md) | Calls a redeploy webhook with retries, then waits until a health URL serves the new build. |
 
 The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners
 (`docs-build` with the `template` builder runs in the build-agent container).
@@ -114,6 +121,7 @@ public issue.
 - [docs/docs.md](docs/docs.md): the documentation workflow.
 - [docs/node-ci.md](docs/node-ci.md), [docs/pwsh-ci.md](docs/pwsh-ci.md),
   [docs/npm-package.md](docs/npm-package.md): the Node, PowerShell and npm package workflows.
+- [docs/container.md](docs/container.md): the container image workflow.
 - [docs/conventions.md](docs/conventions.md): event semantics, version strategies, naming and
   security rules shared by every template.
 - [docs/PLAN.md](docs/PLAN.md): the roadmap.

@@ -1,0 +1,61 @@
+name: Image metadata
+description: Work out an image's tags and OCI labels from the run, by tag kind (sha, version, latest and others).
+author: The-Running-Dev
+
+inputs:
+  image:
+    description: Image name without a tag, for example `ghcr.io/owner/name`. Lowercased.
+    required: true
+  tags:
+    description: Tag kinds, separated by spaces. `sha`, `short-sha`, `version`, `minor`, `major`, `date` (yyyyMMdd, UTC), `branch` (slug) and `latest`.
+    required: false
+    default: sha latest
+  version:
+    description: Version for the `version`, `minor` and `major` tags and the version label. `minor` and `major` are skipped for prereleases.
+    required: false
+    default: ''
+  latest:
+    description: '`false` withholds `latest` even when the run would get it (default-branch builds and stable tag builds).'
+    required: false
+    default: 'true'
+  tag-prefix:
+    description: Prefix of release tags, used to read a tag build's version when `version` is empty.
+    required: false
+    default: v
+  labels:
+    description: Extra labels, `key=value`, one per line. They override the OCI labels of the same key.
+    required: false
+    default: ''
+
+outputs:
+  image:
+    description: Lowercased image name.
+    value: ${{ steps.meta.outputs.image }}
+  tags:
+    description: Full image references (`image:tag`), one per line.
+    value: ${{ steps.meta.outputs.tags }}
+  tag-names:
+    description: Tag names only, separated by spaces.
+    value: ${{ steps.meta.outputs.tag-names }}
+  labels:
+    description: Labels, `key=value`, one per line.
+    value: ${{ steps.meta.outputs.labels }}
+  latest:
+    description: '`true` when the tags include `latest`.'
+    value: ${{ steps.meta.outputs.latest }}
+
+runs:
+  using: composite
+  steps:
+    - id: meta
+      shell: pwsh
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_TAGS: ${{ inputs.tags }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_LATEST: ${{ inputs.latest }}
+        INPUT_TAG_PREFIX: ${{ inputs.tag-prefix }}
+        INPUT_LABELS: ${{ inputs.labels }}
+        GHAT_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        GHAT_PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH image-meta.ps1)'

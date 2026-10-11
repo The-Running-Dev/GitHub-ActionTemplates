@@ -1,0 +1,39 @@
+name: Image archive
+description: Hand a built image from one job to another. `save` writes it and its image ID to a folder; `load` loads it back and fails unless the ID matches.
+author: The-Running-Dev
+
+inputs:
+  mode:
+    description: '`save` or `load`.'
+    required: false
+    default: save
+  image:
+    description: Image reference to save. On `load`, when set, the archive must hold this reference.
+    required: false
+    default: ''
+  path:
+    description: Folder that holds `image.tar` and `image.json`. Empty uses `$RUNNER_TEMP/ghat-image`.
+    required: false
+    default: ''
+
+outputs:
+  image:
+    description: Image reference that was saved or loaded.
+    value: ${{ steps.archive.outputs.image }}
+  id:
+    description: Image ID (`sha256:…`).
+    value: ${{ steps.archive.outputs.id }}
+  path:
+    description: Full path of the folder, for upload-artifact or download-artifact.
+    value: ${{ steps.archive.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - id: archive
+      shell: pwsh
+      env:
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_PATH: ${{ inputs.path }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH image-archive.ps1)'

@@ -1,0 +1,71 @@
+name: Image gate
+description: Smoke-test an image. `start` runs it and waits until it is ready (HEALTHCHECK, then an HTTP probe), then runs scripts inside it; `stop` prints its log and removes it.
+author: The-Running-Dev
+
+inputs:
+  mode:
+    description: '`start` or `stop`. Run `stop` with `if: always()` after the steps that use the container.'
+    required: false
+    default: start
+  name:
+    description: Container name. `start` and `stop` must use the same one.
+    required: false
+    default: ghat-smoke
+  image:
+    description: Image to run (`start`).
+    required: false
+    default: ''
+  port:
+    description: Container port to probe over HTTP. It is published on a free 127.0.0.1 port. Empty skips the probe.
+    required: false
+    default: ''
+  health-path:
+    description: Path the probe requests.
+    required: false
+    default: /
+  health-status:
+    description: Status codes the probe accepts, separated by spaces, or `any` for any answer.
+    required: false
+    default: '200'
+  env:
+    description: Container environment, `NAME=value`, one per line. Passed through an env file, so values stay out of the log.
+    required: false
+    default: ''
+  options:
+    description: Extra `docker run` options, one per line (`--volume /a:/b`). Each line is split on spaces; quoting is not supported.
+    required: false
+    default: ''
+  exec:
+    description: Repository scripts to copy into the running container and run there, by path, one per line. `.ps1` runs with pwsh, `.sh` with sh, anything else directly.
+    required: false
+    default: ''
+  timeout:
+    description: Seconds to wait for the container to be ready.
+    required: false
+    default: '60'
+
+outputs:
+  container:
+    description: Container name.
+    value: ${{ steps.gate.outputs.container }}
+  url:
+    description: Base URL of the published port (`http://127.0.0.1:<port>`), empty without `port`.
+    value: ${{ steps.gate.outputs.url }}
+
+runs:
+  using: composite
+  steps:
+    - id: gate
+      shell: pwsh
+      env:
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_NAME: ${{ inputs.name }}
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_PORT: ${{ inputs.port }}
+        INPUT_HEALTH_PATH: ${{ inputs.health-path }}
+        INPUT_HEALTH_STATUS: ${{ inputs.health-status }}
+        INPUT_ENV: ${{ inputs.env }}
+        INPUT_OPTIONS: ${{ inputs.options }}
+        INPUT_EXEC: ${{ inputs.exec }}
+        INPUT_TIMEOUT: ${{ inputs.timeout }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH image-gate.ps1)'

@@ -1,0 +1,56 @@
+name: Branch tip gate
+description: Decide whether a branch build may still publish, by comparing its commit with the branch head. Tag builds always may.
+author: The-Running-Dev
+
+inputs:
+  require-tip:
+    description: >-
+      What a build that is no longer the tip may do. `all` publishes nothing, `latest` publishes
+      without moving `latest`, `none` publishes everything without checking.
+    required: false
+    default: all
+  sha:
+    description: Commit that was built. Empty uses the run's commit.
+    required: false
+    default: ''
+  branch:
+    description: Branch to compare with. Empty uses the run's branch; tag builds have none.
+    required: false
+    default: ''
+  repository:
+    description: Repository as owner/name. Empty uses the run's repository.
+    required: false
+    default: ''
+  token:
+    description: Token that can read the repository.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  is-tip:
+    description: '`true` when the commit is the branch head (or the build is not for a branch).'
+    value: ${{ steps.gate.outputs.is-tip }}
+  head:
+    description: Branch head commit.
+    value: ${{ steps.gate.outputs.head }}
+  publish:
+    description: '`true` when the build may publish.'
+    value: ${{ steps.gate.outputs.publish }}
+  latest:
+    description: '`true` when the build may move `latest`.'
+    value: ${{ steps.gate.outputs.latest }}
+
+runs:
+  using: composite
+  steps:
+    - id: gate
+      shell: pwsh
+      env:
+        INPUT_REQUIRE_TIP: ${{ inputs.require-tip }}
+        INPUT_SHA: ${{ inputs.sha }}
+        INPUT_BRANCH: ${{ inputs.branch }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        GH_TOKEN: ${{ inputs.token }}
+        GHAT_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        GHAT_PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH branch-tip-gate.ps1)'

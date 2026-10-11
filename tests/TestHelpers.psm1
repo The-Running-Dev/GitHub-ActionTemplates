@@ -149,4 +149,65 @@ function New-GitRepository {
     return $Path
 }
 
-Export-ModuleMember -Function Use-Environment, Invoke-ActionScript, New-GitRepository, ConvertFrom-ActionOutputFile
+function Start-TestHttpServer {
+    <#
+    .SYNOPSIS
+    Serves HTTP on a free loopback port from a thread job, for the probes in the container tests.
+    .DESCRIPTION
+    A raw TCP server rather than HttpListener, which on Windows rejects 127.0.0.1 without a URL
+    reservation. Routes:
+      /status/<code>           answers <code>
+      /text/<text>             answers 200 with <text>
+      /method/<method>         answers 200 for that method, 405 otherwise
+      /flaky/<key>/<n>         answers 503 to the first <n> requests per key, then 200
+    Stop it with Stop-TestHttpServer.
+    #>
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+    $listener.Start()
+    $port = $listener.LocalEndpoint.Port
+
+    $job = Start-ThreadJob -ScriptBlock {
+        $listener = $using:listener
+        $hits = @{}
+        while ($true) {
+            try { $client = $listener.AcceptTcpClient() } catch { break }
+            try {
+                $stream = $client.GetStream()
+                $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::ASCII, $false, 1024, $true)
+                $method, $path = ("$($reader.ReadLine())" -split ' ')[0, 1]
+                while ($reader.ReadLine()) { }
+
+                $code, $body = switch -Regex ($path) {
+                    '^/status/(\d{3})$' { [int] $Matches[1], "status $($Matches[1])" }
+                    '^/text/(.+)$' { 200, [uri]::UnescapeDataString($Matches[1]) }
+                    '^/method/([A-Z]+)$' { if ($method -eq $Matches[1]) { 200, 'ok' } else { 405, "not $method" } }
+                    '^/flaky/([^/]+)/(\d+)$' {
+                        $hits[$Matches[1]] = 1 + [int] $hits[$Matches[1]]
+                        if ($hits[$Matches[1]] -le [int] $Matches[2]) { 503, 'not yet' } else { 200, 'ok' }
+                    }
+                    default { 404, 'not found' }
+                }
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+                $head = "HTTP/1.1 $code Status`r`nContent-Type: text/plain`r`nContent-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n"
+                $headBytes = [System.Text.Encoding]::ASCII.GetBytes($head)
+                $stream.Write($headBytes, 0, $headBytes.Length)
+                $stream.Write($bytes, 0, $bytes.Length)
+                $stream.Flush()
+            }
+            catch { Write-Verbose "Request failed: $_" }
+            finally { $client.Dispose() }
+        }
+    }
+
+    [pscustomobject]@{ Url = "http://127.0.0.1:$port"; Port = $port; Listener = $listener; Job = $job }
+}
+
+function Stop-TestHttpServer {
+    param([Parameter(Mandatory)] $Server)
+
+    $Server.Listener.Stop()
+    $Server.Job | Wait-Job -Timeout 5 | Out-Null
+    $Server.Job | Remove-Job -Force
+}
+
+Export-ModuleMember -Function Use-Environment, Invoke-ActionScript, New-GitRepository, ConvertFrom-ActionOutputFile, Start-TestHttpServer, Stop-TestHttpServer
