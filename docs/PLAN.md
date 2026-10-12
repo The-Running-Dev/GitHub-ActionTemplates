@@ -90,7 +90,7 @@ Ordered by demand observed across the SubZeroDev repositories.
 | Workflow | Does | Key inputs | First consumers |
 |---|---|---|---|
 | `docs.yml` | Build docs (bundled template or the folder's own Node project) in the build-agent container → Pages on default branch and tags | `source`, `builder` (`template`/`node`), `template`, `image`, `title`, `pre-build`, `post-build` (covers the old `test-script`) | PluginContract, Specs, SunTrap, Plugins.GitHub, Blog, WinGet, Platform, GameEngine, PSGenerator, Workspace |
-| `container.yml` | Build → smoke test → save + digest → push only if still branch tip; tags `sha`/`latest`/semver; optional multi-arch, cosign, attestation; optional webhook redeploy + health check | `context`, `dockerfile`, `target`, `image`, `registry`, `platforms`, `smoke-command`, `sign`, `deploy-webhook-secret`, `health-url` | com, SkyNetHR, Adventures, Licensing, Blog, PSGenerator, GameEngine, Plugins.GitHub |
+| `container.yml` | Build → smoke test → save + digest → push only if still branch tip; tags `sha`/`latest`/semver; optional multi-arch, cosign, attestation; optional webhook redeploy + health check | `context`, `dockerfile`, `target`, `image-name`, `registry`, `tags`, `platforms`, `smoke-*`, `sign`, `deploy`, `health-url` | com, SkyNetHR, Adventures, Licensing, Blog, PSGenerator, GameEngine, Plugins.GitHub |
 | `node-ci.yml` | OS × Node matrix; install; configurable script list (`typecheck`, `lint`, `test`, …); optional clean-tree check; aggregated required check | `node-versions`, `os`, `package-manager`, `scripts`, `setup-script`, `check-clean`, `submodules` | AgentKit, Git, GameOfLife, Adventures.Content, LandingPage, Data.Json |
 | `pwsh-ci.yml` | Parse-check all `*.ps1`, Pester, optional coverage gate, test report | `pester-version`, `paths`, `minimum-coverage`, `os` | Data.Json, GameEngine, SkyNetHR, GameOfLife, Workspace, PSGenerator |
 | `dotnet.yml` | Setup SDK, feed auth, build, test (trx), coverage gate, pack, publish (GitHub Packages / nuget.org OIDC / API key), consume check | `solution`, `dotnet-version`, `os`, `pack`, `feed`, `minimum-coverage`, `version-strategy` | Platform, Licensing, Platform.Updater, Cleaner, HotCorners (CI only), WinGet (CI only) |
@@ -133,7 +133,7 @@ Event semantics are identical across archetypes:
 | 1 | Foundation | Remove `templates/`, `.github/templates/`, example-workflows; new layout; `lint.yml`, `release.yml`, `dependabot.yml`; actions `debug`, `version`, `assert-tag-version`, `context` | `v0.1.0` released; lint + self-test green |
 | 2 | Docs (pilot) | `docs-build` action + bundled template on the build-agent image, `docs.yml`, fixtures; `run-scripts`, `changelog`, `node-scripts` for per-repository steps; migrate PluginContract + Specs, then the remaining repositories | Docs repos on `docs.yml@v0`; callers pass only script paths and settings |
 | 3 | Node + PowerShell | `node-ci.yml`, `pwsh-ci.yml`, `pwsh-check`, `coverage-gate`, `test-report`, `npm-package.yml`; give ServiceContract a pipeline | Node/pwsh repos migrated |
-| 4 | Containers | `container.yml`, `image-gate`, `branch-tip-gate`, `webhook-deploy` | com, SkyNetHR, Adventures, Licensing, Blog migrated |
+| 4 | Containers | `container.yml`, `image-meta`, `image-gate`, `image-archive`, `branch-tip-gate`, `image-push`, `webhook-deploy` | com, SkyNetHR, Adventures, Licensing, Blog migrated |
 | 5 | .NET | `dotnet.yml`, `nuget-feed`; GitVersion strategy in `version` | Platform, Licensing, Platform.Updater, Cleaner migrated; HotCorners/WinGet use it for CI |
 | 6 | Consolidate | `claude-review.yml`, `pages.yml`; drift report (repo → pinned ref); `v1.0.0` | All SubZeroDev repos on `@v1`; `v1.0.0` tagged |
 | 7 | Optional extensions | Environment promotion list with approvals; cloud deploys via OIDC (Azure Web App / Functions, etc.); secret-to-config token replacement | On demand |
@@ -153,6 +153,50 @@ Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-loc
 - Migration targets, each in its own pull request: Data.Json (`npm-package.yml` + `pwsh-ci.yml`),
   GameOfLife, Adventures.Content, GameEngine, SkyNetHR and PSGenerator (`node-ci.yml` and/or
   `pwsh-ci.yml`), and a new pipeline for ServiceContract (`node-ci.yml` + `npm-package.yml`).
+
+### Phase 4 decisions
+
+- `container.yml` has four jobs:
+  - `Build` builds with Buildx and loads the image, smoke-tests it with `image-gate`, and saves
+    it with its image ID as an artifact (`image-archive`).
+  - `Publish` (default branch and tags, `push: true`) runs `branch-tip-gate` first, then loads
+    that archive and checks the image ID, tags it (`image-meta`) and pushes with `image-push`, and
+    optionally signs (cosign, keyless) and attests build provenance. What was tested is what is
+    pushed; it is never rebuilt.
+  - `Deploy` (`deploy: true`) calls the redeploy webhook, waits for the health URL with
+    `webhook-deploy`, then runs `post-deploy` scripts.
+  - `Result` (`needs-gate`) is the one check to require.
+- Multi-platform (`platforms`): `Build` smoke-tests the runner's platform. `Publish` rebuilds
+  every platform from the GitHub Actions cache and pushes, because `docker load` cannot hold a
+  multi-platform image.
+- Tags are kinds in `tags`: `sha`, `short-sha`, `version`, `minor`, `major`, `date`, `branch`,
+  `latest`. The default is `sha latest`. `minor`, `major` and `latest` apply to stable builds
+  only: `latest` on default-branch pushes and stable tags. Labels are the OCI set (source,
+  revision, created, version, title).
+- `require-tip` handles a run that is no longer the branch tip when it reaches `Publish`:
+  - `all` (default): push nothing and end green with a summary note.
+  - `latest`: push the commit's tags but not `latest`.
+  - `none`: push everything regardless.
+  The gate, not a concurrency group, orders pushes: a run that lost the race pushes nothing (or
+  no `latest`), and no push is ever cancelled half-way.
+- The smoke test runs the container with `smoke-env` and `smoke-options`, waits for Docker's
+  HEALTHCHECK if the image has one, then probes `smoke-port` + `smoke-path` for `smoke-status`
+  (`any` accepts any answer), then copies the `smoke-exec` scripts into the container and runs
+  them there. After that, `smoke-npm-scripts` (package.json) and `smoke-scripts` (repository
+  scripts) run on the runner with `IMAGE`, `CONTAINER` and `SMOKE_URL` set.
+- Secrets are declared by name:
+  - `REGISTRY_TOKEN`: falls back to `github.token`.
+  - `BUILD_SECRETS`: BuildKit `id=value` lines.
+  - `DEPLOY_WEBHOOK_URL`.
+  - `DEPLOY_TOKEN`: given to `post-deploy` scripts.
+  The caller grants `contents: read`, `packages: write`, `id-token: write` and
+  `attestations: write`.
+- Left to the caller: path filters, change detection, approval gates beyond the `environment`
+  input, and building a tree in an earlier job. The `artifact` input downloads that tree into the
+  build context.
+- Migration targets, each in its own pull request: com, SkyNetHR, Adventures (two images, one
+  deploy), Licensing and Blog. PSGenerator, GameEngine and Plugins.GitHub follow when convenient.
+  PSGenerator's required `Build and publish image` check becomes `<job> / Result`.
 
 ## Open questions
 

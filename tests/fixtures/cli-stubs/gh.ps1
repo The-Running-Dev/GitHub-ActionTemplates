@@ -1,6 +1,7 @@
-# Stands in for the GitHub CLI in the github-release tests. Appends each call's arguments (and the
-# notes file's text) to $env:STUB_LOG/gh.txt. `release view` succeeds only when STUB_RELEASE_EXISTS
-# is 'true', or after this stub "created" the release.
+# Stands in for the GitHub CLI in the github-release and branch-tip-gate tests. Appends each call's
+# arguments (and the notes file's text) to $env:STUB_LOG/gh.txt. `release view` succeeds only when
+# STUB_RELEASE_EXISTS is 'true', or after this stub "created" the release. `api repos/<owner>/<name>/branches/<branch>`
+# prints STUB_BRANCH_HEAD.
 $log = Join-Path $env:STUB_LOG 'gh.txt'
 $created = Join-Path $env:STUB_LOG 'created'
 Add-Content -LiteralPath $log -Value ($args -join ' ')
@@ -11,6 +12,11 @@ if ($notes -ge 0) { Add-Content -LiteralPath $log -Value "NOTES: $((Get-Content 
 if ($args[0] -eq 'release' -and $args[1] -eq 'view') {
     if ($env:STUB_RELEASE_EXISTS -ne 'true' -and -not (Test-Path -LiteralPath $created)) { exit 1 }
     if ($args -contains 'url') { Write-Output "https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$($args[2])" }
+    exit 0
+}
+if ($args[0] -eq 'api' -and $args[1] -match '^repos/[^/]+/[^/]+/branches/') {
+    if (-not $env:STUB_BRANCH_HEAD) { exit 1 }
+    Write-Output $env:STUB_BRANCH_HEAD
     exit 0
 }
 if ($args[0] -eq 'release' -and $args[1] -eq 'create') { Set-Content -LiteralPath $created -Value '' }

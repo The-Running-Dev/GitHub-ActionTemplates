@@ -1,0 +1,28 @@
+name: Container
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions: {}
+
+jobs:
+  image:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/container.yml@v0
+    with:
+      tags: short-sha version minor major latest
+      fetch-depth: 0 # the tag version strategy reads the nearest tag
+      smoke-port: '8080'
+      smoke-path: /health
+      deploy: true
+      health-url: https://example.com/version.json
+      health-expect: ${{ github.sha }}
+    secrets:
+      DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}

@@ -1,0 +1,576 @@
+name: Container
+
+# Builds a container image, starts it and smoke-tests it, then pushes the image that was tested:
+# from the default branch and from tags, once the build is still the branch tip. A deploy job can
+# call a redeploy webhook and wait for the site to answer. A final `Result` job gives branch
+# protection one check to require.
+#
+# Single-platform images are built once; the tested image travels to Publish as an artifact.
+# With `platforms`, Publish rebuilds for every platform from the build cache and pushes that.
+#
+# The caller grants `contents: read`, `packages: write`, `id-token: write` and
+# `attestations: write`. See docs/container.md.
+
+on:
+  workflow_call:
+    inputs:
+      context:
+        description: Build context, relative to the repository root.
+        type: string
+        default: .
+      dockerfile:
+        description: Dockerfile, relative to the repository root. Empty uses `<context>/Dockerfile`.
+        type: string
+        default: ''
+      target:
+        description: Build stage to stop at. Empty builds the last stage.
+        type: string
+        default: ''
+      build-args:
+        description: Build arguments, `NAME=value`, one per line.
+        type: string
+        default: ''
+      image-name:
+        description: Image name under the owner. Empty uses the repository name.
+        type: string
+        default: ''
+      registry:
+        description: Registry host the image is pushed to.
+        type: string
+        default: ghcr.io
+      registry-username:
+        description: Registry user. Empty uses the actor that started the run.
+        type: string
+        default: ''
+      tags:
+        description: Tag kinds, separated by spaces (`sha`, `short-sha`, `version`, `minor`, `major`, `date`, `branch`, `latest`). `latest` only goes on default-branch and stable tag builds.
+        type: string
+        default: sha latest
+      labels:
+        description: Extra image labels, `key=value`, one per line.
+        type: string
+        default: ''
+      version-strategy:
+        description: Where the version comes from (`tag`, `manifest`, `run-number`; see the version action). Empty works one out only when `tags` needs it, from tags.
+        type: string
+        default: ''
+      manifest:
+        description: Manifest for the `manifest` version strategy, from the repository root. Empty detects it.
+        type: string
+        default: ''
+      tag-prefix:
+        description: Prefix of release tags.
+        type: string
+        default: v
+      platforms:
+        description: Platforms to publish, comma-separated, e.g. `linux/amd64,linux/arm64`. Empty publishes the runner's platform, the image that was smoke-tested.
+        type: string
+        default: ''
+      cache:
+        description: Cache image layers in the GitHub Actions cache. Pull requests read the cache but do not write it.
+        type: boolean
+        default: true
+      push:
+        description: Push default-branch and tag builds. `false` only builds and smoke-tests.
+        type: boolean
+        default: true
+      require-tip:
+        description: What a branch build that is no longer the branch head may push. `all` pushes nothing, `latest` pushes without moving `latest`, `none` pushes everything.
+        type: string
+        default: all
+      sign:
+        description: Sign the pushed digest with cosign, keyless.
+        type: boolean
+        default: false
+      attest:
+        description: Attach a build provenance attestation to the pushed digest.
+        type: boolean
+        default: true
+      environment:
+        description: Environment the Publish job runs in, for approvals and environment secrets. Empty uses none.
+        type: string
+        default: ''
+      artifact:
+        description: Artifact from an earlier job to download before the build, for example a built site the Dockerfile copies.
+        type: string
+        default: ''
+      artifact-path:
+        description: Folder the `artifact` is downloaded into, from the repository root.
+        type: string
+        default: .
+      pre-build:
+        description: Repository scripts run before the image build, by path from the repository root, one per line. `.ps1` files run in PowerShell.
+        type: string
+        default: ''
+      smoke-test:
+        description: Start the image and wait until it is ready before anything is pushed.
+        type: boolean
+        default: true
+      smoke-port:
+        description: Container port to publish and probe over HTTP. Empty only waits for the container (and its HEALTHCHECK).
+        type: string
+        default: ''
+      smoke-path:
+        description: Path the HTTP probe requests.
+        type: string
+        default: /
+      smoke-status:
+        description: Status codes the probe accepts, separated by spaces, or `any`.
+        type: string
+        default: '200'
+      smoke-env:
+        description: Container environment, `NAME=value`, one per line.
+        type: string
+        default: ''
+      smoke-options:
+        description: Extra `docker run` options, one option and its value per line, e.g. `--tmpfs /data`.
+        type: string
+        default: ''
+      smoke-exec:
+        description: Repository scripts copied into the running container and run there, one per line. `.sh` runs with `sh`, `.ps1` with `pwsh`.
+        type: string
+        default: ''
+      smoke-timeout:
+        description: Seconds the container has to become ready.
+        type: string
+        default: '60'
+      smoke-scripts:
+        description: Repository scripts run on the runner once the container is ready, one per line. They get `IMAGE`, `CONTAINER` and `SMOKE_URL`.
+        type: string
+        default: ''
+      smoke-npm-scripts:
+        description: package.json scripts run once the container is ready, separated by spaces, with the same variables as `smoke-scripts`.
+        type: string
+        default: ''
+      smoke-directory:
+        description: Node project folder for `smoke-npm-scripts`.
+        type: string
+        default: .
+      node-version:
+        description: Node version for `smoke-npm-scripts` and Node smoke scripts. Empty uses the runner's when no npm scripts are set.
+        type: string
+        default: ''
+      deploy:
+        description: After a push, call the `DEPLOY_WEBHOOK_URL` secret and wait for `health-url`.
+        type: boolean
+        default: false
+      deploy-environment:
+        description: Environment the Deploy job runs in. Empty uses none.
+        type: string
+        default: ''
+      deploy-method:
+        description: HTTP method of the webhook call.
+        type: string
+        default: POST
+      health-url:
+        description: URL to poll after the webhook. Empty skips the wait.
+        type: string
+        default: ''
+      health-status:
+        description: Status codes that count as deployed, separated by spaces, or `any`.
+        type: string
+        default: '200'
+      health-expect:
+        description: Text the health response must contain, for example the commit SHA a version endpoint reports.
+        type: string
+        default: ''
+      health-timeout:
+        description: Seconds to wait for the health URL.
+        type: string
+        default: '300'
+      post-deploy:
+        description: Repository scripts run after the deploy, one per line. They get `IMAGE`, `DIGEST` and `DEPLOY_TOKEN`.
+        type: string
+        default: ''
+      artifact-name:
+        description: Name of the image artifact passed from Build to Publish. Empty uses `image-<image-name>`; set it when the image name has a `/`.
+        type: string
+        default: ''
+      gates-file:
+        description: Gates file checked against the workflows that call this library (see docs/gates.md). Skipped when the file does not exist; empty turns the check off.
+        type: string
+        default: .github/gates.json
+      fetch-depth:
+        description: Commits to fetch; 0 fetches all history (the `tag` version strategy needs it).
+        type: number
+        default: 1
+      submodules:
+        description: '`true`, `recursive` or `false`, as for actions/checkout.'
+        type: string
+        default: 'false'
+      timeout-minutes:
+        description: Timeout of the build job.
+        type: number
+        default: 30
+    secrets:
+      REGISTRY_TOKEN:
+        description: Registry password or token. Without it ghcr.io uses `github.token`.
+        required: false
+      BUILD_SECRETS:
+        description: Build secrets, `id=value`, one per line, for `RUN --mount=type=secret`.
+        required: false
+      DEPLOY_WEBHOOK_URL:
+        description: Redeploy webhook URL (Portainer, Coolify and the like).
+        required: false
+      DEPLOY_TOKEN:
+        description: Token the `post-deploy` scripts get as `DEPLOY_TOKEN`.
+        required: false
+    outputs:
+      image:
+        description: Image name without a tag, e.g. `ghcr.io/owner/name`.
+        value: ${{ jobs.build.outputs.image }}
+      version:
+        description: Version that was built, empty when no version was worked out.
+        value: ${{ jobs.build.outputs.version }}
+      pushed:
+        description: '`true` when the image was pushed.'
+        value: ${{ jobs.publish.outputs.pushed }}
+      digest:
+        description: Pushed digest, empty when nothing was pushed.
+        value: ${{ jobs.publish.outputs.digest }}
+      tags:
+        description: Pushed references, one per line.
+        value: ${{ jobs.publish.outputs.tags }}
+      deployed:
+        description: '`true` when the deploy job finished.'
+        value: ${{ jobs.deploy.outputs.deployed }}
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    outputs:
+      image: ${{ steps.context.outputs.image }}
+      version: ${{ steps.version.outputs.version }}
+      archived: ${{ steps.archive.outcome == 'success' }}
+      should-publish: ${{ steps.context.outputs.should-publish }}
+    env:
+      GHAT_CACHE_SCOPE: ${{ inputs.image-name || github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: Gates
+        if: inputs.gates-file != '' && hashFiles(inputs.gates-file) != ''
+        uses: $/actions/gates
+        with:
+          file: ${{ inputs.gates-file }}
+
+      - name: Context
+        id: context
+        uses: $/actions/context
+        with:
+          registry: ${{ inputs.registry }}
+          image-name: ${{ inputs.image-name }}
+
+      - name: Version
+        id: version
+        if: inputs.version-strategy != '' || contains(inputs.tags, 'version') || contains(inputs.tags, 'minor') || contains(inputs.tags, 'major')
+        uses: $/actions/version
+        with:
+          strategy: ${{ inputs.version-strategy || 'tag' }}
+          manifest: ${{ inputs.manifest }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+
+      - name: Artifact
+        if: inputs.artifact != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.artifact }}
+          path: ${{ inputs.artifact-path }}
+
+      - name: Pre-build
+        if: inputs.pre-build != ''
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.pre-build }}
+
+      - name: Metadata
+        id: meta
+        uses: $/actions/image-meta
+        with:
+          image: ${{ steps.context.outputs.image }}
+          tags: ${{ inputs.tags }}
+          version: ${{ steps.version.outputs.version }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+          labels: ${{ inputs.labels }}
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Loaded into the runner's Docker so the smoke test runs the image that gets pushed.
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          target: ${{ inputs.target }}
+          build-args: ${{ inputs.build-args }}
+          secrets: ${{ secrets.BUILD_SECRETS }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.context.outputs.image }}:${{ steps.context.outputs.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: ${{ inputs.cache && format('type=gha,scope={0}', env.GHAT_CACHE_SCOPE) || '' }}
+          cache-to: ${{ inputs.cache && steps.context.outputs.is-pull-request != 'true' && format('type=gha,mode=max,scope={0}', env.GHAT_CACHE_SCOPE) || '' }}
+
+      - name: Start
+        id: smoke
+        if: inputs.smoke-test
+        uses: $/actions/image-gate
+        with:
+          image: ${{ steps.context.outputs.image }}:${{ steps.context.outputs.sha }}
+          port: ${{ inputs.smoke-port }}
+          health-path: ${{ inputs.smoke-path }}
+          health-status: ${{ inputs.smoke-status }}
+          env: ${{ inputs.smoke-env }}
+          options: ${{ inputs.smoke-options }}
+          exec: ${{ inputs.smoke-exec }}
+          timeout: ${{ inputs.smoke-timeout }}
+
+      - name: Node
+        if: inputs.smoke-test && (inputs.smoke-npm-scripts != '' || inputs.node-version != '')
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version || 'lts/*' }}
+          package-manager-cache: false
+
+      - name: Smoke (npm)
+        if: inputs.smoke-test && inputs.smoke-npm-scripts != ''
+        uses: $/actions/node-scripts
+        env:
+          IMAGE: ${{ steps.context.outputs.image }}:${{ steps.context.outputs.sha }}
+          CONTAINER: ${{ steps.smoke.outputs.container }}
+          SMOKE_URL: ${{ steps.smoke.outputs.url }}
+        with:
+          path: ${{ inputs.smoke-directory }}
+          scripts: ${{ inputs.smoke-npm-scripts }}
+
+      - name: Smoke
+        if: inputs.smoke-test && inputs.smoke-scripts != ''
+        uses: $/actions/run-scripts
+        env:
+          IMAGE: ${{ steps.context.outputs.image }}:${{ steps.context.outputs.sha }}
+          CONTAINER: ${{ steps.smoke.outputs.container }}
+          SMOKE_URL: ${{ steps.smoke.outputs.url }}
+        with:
+          scripts: ${{ inputs.smoke-scripts }}
+
+      - name: Stop
+        if: always() && inputs.smoke-test
+        uses: $/actions/image-gate
+        with:
+          mode: stop
+
+      - name: Archive
+        id: archive
+        if: inputs.push && inputs.platforms == '' && steps.context.outputs.should-publish == 'true'
+        uses: $/actions/image-archive
+        with:
+          image: ${{ steps.context.outputs.image }}:${{ steps.context.outputs.sha }}
+          path: ${{ runner.temp }}/ghat-image
+
+      - name: Upload
+        if: steps.archive.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-name || format('image-{0}', env.GHAT_CACHE_SCOPE) }}
+          path: ${{ runner.temp }}/ghat-image
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: build
+    if: inputs.push && needs.build.outputs.should-publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      image: ${{ steps.push.outputs.image }}
+      pushed: ${{ steps.push.outputs.digest != '' }}
+      digest: ${{ steps.push.outputs.digest }}
+      tags: ${{ steps.push.outputs.tags }}
+    env:
+      GHAT_CACHE_SCOPE: ${{ inputs.image-name || github.event.repository.name }}
+      GHAT_MULTI: ${{ inputs.platforms != '' }}
+    steps:
+      # Pushes are ordered by this gate rather than a concurrency group: a build that is no longer
+      # the branch head does not overwrite what a newer one pushed.
+      - name: Branch tip
+        id: gate
+        uses: $/actions/branch-tip-gate
+        with:
+          require-tip: ${{ inputs.require-tip }}
+
+      - name: Metadata
+        id: meta
+        if: steps.gate.outputs.publish == 'true'
+        uses: $/actions/image-meta
+        with:
+          image: ${{ needs.build.outputs.image }}
+          tags: ${{ inputs.tags }}
+          version: ${{ needs.build.outputs.version }}
+          latest: ${{ steps.gate.outputs.latest }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+          labels: ${{ inputs.labels }}
+
+      - name: Download
+        if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.artifact-name || format('image-{0}', env.GHAT_CACHE_SCOPE) }}
+          path: ${{ runner.temp }}/ghat-image
+
+      - name: Load
+        id: load
+        if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI != 'true'
+        uses: $/actions/image-archive
+        with:
+          mode: load
+          path: ${{ runner.temp }}/ghat-image
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI == 'true'
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: Artifact
+        if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI == 'true' && inputs.artifact != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.artifact }}
+          path: ${{ inputs.artifact-path }}
+
+      - name: Pre-build
+        if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI == 'true' && inputs.pre-build != ''
+        uses: $/actions/run-scripts
+        with:
+          scripts: ${{ inputs.pre-build }}
+
+      - name: Log in
+        if: steps.gate.outputs.publish == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ inputs.registry-username || github.actor }}
+          password: ${{ secrets.REGISTRY_TOKEN || github.token }}
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI == 'true'
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI == 'true'
+
+      - name: Build and push
+        id: build
+        if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          target: ${{ inputs.target }}
+          build-args: ${{ inputs.build-args }}
+          secrets: ${{ secrets.BUILD_SECRETS }}
+          platforms: ${{ inputs.platforms }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          push: true
+          provenance: false
+          cache-from: ${{ inputs.cache && format('type=gha,scope={0}', env.GHAT_CACHE_SCOPE) || '' }}
+          cache-to: ${{ inputs.cache && format('type=gha,mode=max,scope={0}', env.GHAT_CACHE_SCOPE) || '' }}
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        if: steps.gate.outputs.publish == 'true' && inputs.sign
+
+      - name: Push
+        id: push
+        if: steps.gate.outputs.publish == 'true'
+        uses: $/actions/image-push
+        with:
+          source: ${{ steps.load.outputs.image }}
+          digest: ${{ steps.build.outputs.digest }}
+          tags: ${{ steps.meta.outputs.tags }}
+          sign: ${{ inputs.sign }}
+
+      - name: Attest
+        if: steps.gate.outputs.publish == 'true' && inputs.attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.push.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+  deploy:
+    name: Deploy
+    needs: publish
+    if: inputs.deploy && needs.publish.outputs.pushed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.deploy-environment }}
+    permissions:
+      contents: read
+    outputs:
+      deployed: ${{ steps.deploy.outcome == 'success' && (inputs.post-deploy == '' || steps.post.outcome == 'success') }}
+    steps:
+      - name: Deploy
+        id: deploy
+        uses: $/actions/webhook-deploy
+        with:
+          url: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          method: ${{ inputs.deploy-method }}
+          health-url: ${{ inputs.health-url }}
+          health-status: ${{ inputs.health-status }}
+          health-expect: ${{ inputs.health-expect }}
+          health-timeout: ${{ inputs.health-timeout }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: inputs.post-deploy != ''
+        with:
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: Node
+        if: inputs.post-deploy != '' && inputs.node-version != ''
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          package-manager-cache: false
+
+      - name: Post-deploy
+        id: post
+        if: inputs.post-deploy != ''
+        uses: $/actions/run-scripts
+        env:
+          IMAGE: ${{ needs.publish.outputs.image }}
+          DIGEST: ${{ needs.publish.outputs.digest }}
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        with:
+          scripts: ${{ inputs.post-deploy }}
+
+  result:
+    name: Result
+    needs: [build, publish, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - uses: $/actions/needs-gate
+        with:
+          needs: ${{ toJSON(needs) }}

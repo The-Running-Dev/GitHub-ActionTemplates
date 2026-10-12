@@ -1,0 +1,46 @@
+name: Image push
+description: Tag a local image and push every tag, then report its digest and optionally sign it with cosign. Log in to the registry first.
+author: The-Running-Dev
+
+inputs:
+  source:
+    description: Local image to push, for example the reference `image-archive` loaded.
+    required: false
+    default: ''
+  tags:
+    description: Image references to push (`registry/owner/name:tag`), one per line, all in one repository. The `tags` output of `image-meta`.
+    required: true
+  digest:
+    description: Digest of an image Buildx already pushed under `tags`. Set it instead of `source` to only sign and report.
+    required: false
+    default: ''
+  sign:
+    description: 'Sign the pushed digest with cosign, keyless. Needs `id-token: write` and cosign on the PATH (sigstore/cosign-installer).'
+    required: false
+    default: 'false'
+
+outputs:
+  image:
+    description: Repository the tags name, without a tag.
+    value: ${{ steps.push.outputs.image }}
+  digest:
+    description: Pushed digest (`sha256:…`).
+    value: ${{ steps.push.outputs.digest }}
+  reference:
+    description: '`image@digest`.'
+    value: ${{ steps.push.outputs.reference }}
+  tags:
+    description: References that were pushed, one per line.
+    value: ${{ steps.push.outputs.tags }}
+
+runs:
+  using: composite
+  steps:
+    - id: push
+      shell: pwsh
+      env:
+        INPUT_SOURCE: ${{ inputs.source }}
+        INPUT_TAGS: ${{ inputs.tags }}
+        INPUT_DIGEST: ${{ inputs.digest }}
+        INPUT_SIGN: ${{ inputs.sign }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH image-push.ps1)'

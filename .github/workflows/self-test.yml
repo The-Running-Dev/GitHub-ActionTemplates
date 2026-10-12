@@ -191,6 +191,130 @@ jobs:
       github-release: false
       artifact-name: ci-npm-package
 
+  # Builds and smoke-tests the fixture image; push is off, so Publish and Deploy skip.
+  container:
+    name: Container
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: $/.github/workflows/container.yml
+    with:
+      context: tests/fixtures/container
+      image-name: ghat-fixture
+      build-args: FIXTURE_TEXT=from-build-arg
+      push: false
+      smoke-port: '8080'
+      smoke-exec: tests/fixtures/container/smoke/in-container.sh
+      smoke-scripts: tests/fixtures/container/smoke/Test-Fixture.ps1
+
+  # The publish-side actions, against a local registry instead of GHCR.
+  container-actions:
+    name: Container actions
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      registry:
+        image: registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+        ports:
+          - 5000:5000
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: tests/fixtures/container
+          build-args: FIXTURE_TEXT=from-build-arg
+          tags: ghat-fixture:build
+          load: true
+          provenance: false
+
+      - name: image-meta
+        id: meta
+        uses: $/actions/image-meta
+        with:
+          image: localhost:5000/ghat/fixture
+          tags: short-sha sha
+
+      - name: image-gate (start)
+        id: gate
+        uses: $/actions/image-gate
+        with:
+          image: ghat-fixture:build
+          port: '8080'
+          exec: tests/fixtures/container/smoke/in-container.sh
+
+      - name: webhook-deploy
+        id: deploy
+        uses: $/actions/webhook-deploy
+        with:
+          url: ${{ steps.gate.outputs.url }}/
+          method: GET
+          health-url: ${{ steps.gate.outputs.url }}/version.txt
+          health-expect: from-build-arg
+          health-interval: '1'
+          health-consecutive: '2'
+
+      - name: image-gate (stop)
+        if: always()
+        uses: $/actions/image-gate
+        with:
+          mode: stop
+
+      - name: image-archive (save)
+        uses: $/actions/image-archive
+        with:
+          image: ghat-fixture:build
+          path: ${{ runner.temp }}/ghat-image
+
+      - name: image-archive (load)
+        id: load
+        uses: $/actions/image-archive
+        with:
+          mode: load
+          path: ${{ runner.temp }}/ghat-image
+
+      - name: image-push
+        id: push
+        uses: $/actions/image-push
+        with:
+          source: ${{ steps.load.outputs.image }}
+          tags: ${{ steps.meta.outputs.tags }}
+
+      - name: branch-tip-gate (all)
+        id: tip-all
+        uses: $/actions/branch-tip-gate
+        with:
+          sha: '0000000000000000000000000000000000000000'
+          branch: main
+
+      - name: branch-tip-gate (latest)
+        id: tip-latest
+        uses: $/actions/branch-tip-gate
+        with:
+          sha: '0000000000000000000000000000000000000000'
+          branch: main
+          require-tip: latest
+
+      - name: Check outputs
+        shell: pwsh
+        env:
+          META_TAGS: ${{ steps.meta.outputs.tags }}
+          GATE_URL: ${{ steps.gate.outputs.url }}
+          WEBHOOK_STATUS: ${{ steps.deploy.outputs.webhook-status }}
+          HEALTH_STATUS: ${{ steps.deploy.outputs.health-status }}
+          LOADED_IMAGE: ${{ steps.load.outputs.image }}
+          PUSH_IMAGE: ${{ steps.push.outputs.image }}
+          PUSH_DIGEST: ${{ steps.push.outputs.digest }}
+          TIP_ALL: ${{ toJSON(steps.tip-all.outputs) }}
+          TIP_LATEST: ${{ toJSON(steps.tip-latest.outputs) }}
+        run: ./scripts/Test-ContainerOutputs.ps1
+
   ci-check:
     name: CI artifacts
     needs: [node-ci, pwsh-ci, npm-package]
