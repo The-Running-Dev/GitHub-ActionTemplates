@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-12
+
 ### Added
 - `container.yml` reusable workflow: builds an image with Buildx, starts it and smoke-tests it
   (HEALTHCHECK, HTTP probe, scripts inside the container and against it), then pushes the image
