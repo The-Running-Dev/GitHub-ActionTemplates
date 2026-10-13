@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-13
+
 ### Added
 - `dotnet.yml` reusable workflow: builds and tests a .NET solution on each runner in `os`, with a
   test report and a coverage gate over the merged coverlet reports; with `pack` it packs the
@@ -18,6 +20,8 @@ section for its version.
   versions already on the feed).
 - `version` has a `gitversion` strategy (GitVersion.Tool from the repository's tool manifest, or
   the pinned `gitversion-version`).
+- `gates` derives the gates of jobs that call `dotnet.yml`: their `pre-build` scripts, the restore,
+  build and test of the solution, and their `post-build` scripts.
 
 ## [0.6.0] - 2026-10-12
 
