@@ -14,7 +14,7 @@ $yamlVersion = Get-ActionInput 'yaml-version' '0.4.12'
 
 # A caller job of one of this library's workflows, by owner/GitHub-ActionTemplates or by the
 # self-repository syntax this repository uses.
-$libraryWorkflow = '^(?:[^/\s]+/GitHub-ActionTemplates|\$)/\.github/workflows/(?<kind>node-ci|pwsh-ci|npm-package)\.yml(?:@\S+)?$'
+$libraryWorkflow = '^(?:[^/\s]+/GitHub-ActionTemplates|\$)/\.github/workflows/(?<kind>node-ci|pwsh-ci|npm-package|dotnet)\.yml(?:@\S+)?$'
 
 $gatesPath = Resolve-WorkspacePath $file $workspace 'file'
 $workflowFolder = Resolve-WorkspacePath $workflows $workspace 'workflows'
@@ -109,6 +109,29 @@ function Get-PwshGate([string] $Job, $With) {
     foreach ($path in Split-ActionList (Get-Value $With 'post-build')) { New-Gate $Job $path (Format-ScriptCommand $path) }
 }
 
+# The restore, build and test of the dotnet-test action, without its report and coverage arguments.
+function Get-DotnetGate([string] $Job, $With) {
+    $folder = Get-Value $With 'working-directory' '.'
+    $full = Resolve-WorkspacePath $folder $workspace 'working-directory' -AllowRoot
+    $solution = [System.IO.Path]::GetRelativePath($full, (Find-DotnetProject -Folder $full -Workspace $workspace -Solution (Get-Value $With 'solution'))).Replace('\', '/')
+    $configuration = Get-Value $With 'configuration' 'Release'
+    $common = if ((Get-Value $With 'enable-windows-targeting' 'false') -eq 'true') { ' -p:EnableWindowsTargeting=true' } else { '' }
+    function Join-Argument([string] $Command, [string] $Extra) { if ($Extra.Trim()) { "$Command $($Extra.Trim())" } else { $Command } }
+
+    foreach ($path in Split-ActionList (Get-Value $With 'pre-build')) { New-Gate $Job $path (Format-ScriptCommand $path) }
+    New-Gate $Job 'restore' (Join-Location $folder (Join-Argument "dotnet restore $solution$common" (Get-Value $With 'restore-args')))
+    New-Gate $Job 'build' (Join-Location $folder (Join-Argument "dotnet build $solution --no-restore --configuration $configuration$common" (Get-Value $With 'build-args')))
+    if ((Get-Value $With 'test' 'true') -eq 'true') {
+        $test = "dotnet test $solution --no-build --configuration $configuration$common"
+        $filter = Get-Value $With 'test-filter'
+        # Single quotes keep the filter one argument in a POSIX shell and in PowerShell alike.
+        if ($filter -match "'") { throw "Job '$Job' has a test-filter with a single quote, which a gate command cannot quote for both shells." }
+        if ($filter) { $test += " --filter '$filter'" }
+        New-Gate $Job 'test' (Join-Location $folder (Join-Argument $test (Get-Value $With 'test-args')))
+    }
+    foreach ($path in Split-ActionList (Get-Value $With 'post-build')) { New-Gate $Job $path (Format-ScriptCommand $path) }
+}
+
 # Line index of each job key under `jobs:`, in document order.
 function Get-JobLine([string[]] $Lines) {
     $jobs = [ordered]@{}
@@ -168,7 +191,11 @@ function Get-LibraryGate([string] $Workflow, $JobLines, $Document) {
             }
         }
         $line = if ($JobLines.Contains($job)) { $JobLines[$job] } else { 0 }
-        $gates = if ($kind -eq 'pwsh-ci') { @(Get-PwshGate $job $with) } else { @(Get-NodeGate $job $with) }
+        $gates = switch ($kind) {
+            'pwsh-ci' { @(Get-PwshGate $job $with) }
+            'dotnet' { @(Get-DotnetGate $job $with) }
+            default { @(Get-NodeGate $job $with) }
+        }
         [pscustomobject]@{ Line = $line; Gates = $gates }
     }
 }
@@ -182,7 +209,7 @@ $found = foreach ($workflowFile in Get-ChildItem -LiteralPath $workflowFolder -F
     @(Get-LibraryGate $relative $jobLines $document) + @(Get-MarkedGate $relative $lines $jobLines) | Sort-Object Line
 }
 $expected = @($found | ForEach-Object Gates)
-if (-not $expected) { throw "No gates found in '$workflows': no job calls node-ci, pwsh-ci or npm-package, and no step is marked '# verification: true'." }
+if (-not $expected) { throw "No gates found in '$workflows': no job calls node-ci, pwsh-ci, npm-package or dotnet, and no step is marked '# verification: true'." }
 
 $json = ([ordered]@{ gates = $expected } | ConvertTo-Json -Depth 5) -replace '\r\n', "`n"
 

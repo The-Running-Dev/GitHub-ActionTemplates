@@ -161,6 +161,43 @@ jobs:
         )
     }
 
+    It 'reads dotnet calls: the restore, build and test of the solution between the scripts' {
+        $workspace = New-Workspace @'
+on: push
+jobs:
+  dotnet:
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/dotnet.yml@v0
+    with:
+      working-directory: src
+      enable-windows-targeting: true
+      test-filter: Category!=Interactive
+      test-args: --blame-hang-timeout 5m
+      pre-build: build/Prepare.ps1
+      post-build: build/Check.ps1
+  release:
+    uses: $/.github/workflows/dotnet.yml
+    with:
+      solution: App.slnx
+      configuration: Debug
+      test: false
+'@
+        Set-File (Join-Path $workspace 'src/Library.slnx') '<Solution />'
+        Set-File (Join-Path $workspace 'App.slnx') '<Solution />'
+
+        $result = Invoke-GateAction $workspace @{ INPUT_WRITE = 'true' }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        Get-GateList $workspace | ForEach-Object { "$($_['name']) => $($_['command'])" } | Should -Be @(
+            'dotnet / build/Prepare.ps1 => pwsh -NoProfile -File ./build/Prepare.ps1'
+            'dotnet / restore => cd src && dotnet restore Library.slnx -p:EnableWindowsTargeting=true'
+            'dotnet / build => cd src && dotnet build Library.slnx --no-restore --configuration Release -p:EnableWindowsTargeting=true'
+            "dotnet / test => cd src && dotnet test Library.slnx --no-build --configuration Release -p:EnableWindowsTargeting=true --filter 'Category!=Interactive' --blame-hang-timeout 5m"
+            'dotnet / build/Check.ps1 => pwsh -NoProfile -File ./build/Check.ps1'
+            'release / restore => dotnet restore App.slnx'
+            'release / build => dotnet build App.slnx --no-restore --configuration Debug'
+        )
+    }
+
     It 'rejects <Name>' -ForEach @(
         @{
             Name     = 'an expression in a library input'

@@ -19,8 +19,8 @@ file exists.
 
 ## The check
 
-[`node-ci.yml`](node-ci.md), [`pwsh-ci.yml`](pwsh-ci.md) and [`npm-package.yml`](npm-package.md)
-run the [`gates`](../actions/gates/README.md) action once per run when the file exists (their
+[`node-ci.yml`](node-ci.md), [`pwsh-ci.yml`](pwsh-ci.md), [`npm-package.yml`](npm-package.md) and
+[`dotnet.yml`](dotnet.md) run the [`gates`](../actions/gates/README.md) action once per run when the file exists (their
 `gates-file` input; empty turns it off). It derives the gates from every workflow in
 `.github/workflows` and fails when the committed list has a gate missing or one no workflow
 runs. Order does not matter. The failure prints the expected file in the log and the step
@@ -45,6 +45,11 @@ In workflow-file order, then job and step order:
 - **A job that calls `pwsh-ci.yml`:** each `pre-build` script; PSScriptAnalyzer for each of
   `paths` when `analyzer` is `true`; Pester on `tests` with the `tags` and `exclude-tags`
   filters; each `post-build` script.
+- **A job that calls `dotnet.yml`:** each `pre-build` script; `dotnet restore`, `dotnet build`
+  and, unless `test` is `false`, `dotnet test` of the solution, with the `configuration`,
+  `enable-windows-targeting`, `test-filter` and extra argument inputs; each `post-build` script.
+  A `working-directory` other than the root prefixes `cd <folder> && `. A job like this has no
+  steps of its own, so it carries no `# verification: true` marker.
 - **A step marked `# verification: true`** on the line before it: its `run`, with
   `working-directory` as a `cd` prefix. The gate's name is the job and the step name.
 
