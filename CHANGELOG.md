@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-13
+
 ### Added
 - `dotnet.yml` reusable workflow: builds and tests a .NET solution on each runner in `os`, with a
   test report and a coverage gate over the merged coverlet reports; with `pack` it packs the
