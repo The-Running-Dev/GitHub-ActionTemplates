@@ -2,8 +2,9 @@
 
 Checks that a repository's committed gates file lists the commands its CI runs, so a local
 verification run (AgentKit's `/verify`, a pre-push script, a person) runs the same gates as CI.
-[`node-ci.yml`](../../docs/node-ci.md), [`pwsh-ci.yml`](../../docs/pwsh-ci.md) and
-[`npm-package.yml`](../../docs/npm-package.md) run it whenever the file exists. See
+[`node-ci.yml`](../../docs/node-ci.md), [`pwsh-ci.yml`](../../docs/pwsh-ci.md),
+[`npm-package.yml`](../../docs/npm-package.md) and [`dotnet.yml`](../../docs/dotnet.md) run it
+whenever the file exists. See
 [docs/gates.md](../../docs/gates.md) for the file and how the gates are derived.
 
 ```yaml
