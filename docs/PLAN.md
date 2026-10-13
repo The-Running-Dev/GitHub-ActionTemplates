@@ -198,11 +198,43 @@ Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-loc
   deploy), Licensing and Blog. PSGenerator, GameEngine and Plugins.GitHub follow when convenient.
   PSGenerator's required `Build and publish image` check becomes `<job> / Result`.
 
+### Phase 5 decisions
+
+- `dotnet.yml` runs on hosted runners with `os` defaulting to `["ubuntu-latest"]`, like the other
+  matrix workflows. Windows-only solutions pass `os: '["windows-latest"]'`; Linux runners can
+  still build `net*-windows` projects with `enable-windows-targeting`.
+- Jobs:
+  - `Test` (per runner) restores, builds and tests with `dotnet-test`: TRX results to
+    `test-report`, coverlet reports merged into one so a line is counted once across test
+    projects, then `coverage-gate`.
+  - `Pack` (`pack: true`, one runner) computes the version, packs with `dotnet-pack` and uploads
+    the packages. What is published is what was packed.
+  - `Publish` pushes with `nuget-push` from tags, and from the default branch with
+    `publish-prereleases`. One publish at a time per repository.
+  - `Post-publish` runs repository scripts with `PACKAGE_VERSION`, for checks such as restoring
+    the package that was just published.
+  - `GitHub release` (`github-release: true`) attaches the packages to the release.
+  - `Result` (`needs-gate`) is the one check to require.
+- Versions: `manifest` (the default) reads `<Version>` from Directory.Build.props or the
+  project; `version` gained a `gitversion` strategy, which uses the repository's tool manifest
+  when it lists GitVersion.Tool, else installs the pinned `gitversion-version`. The version is
+  passed as `-p:Version` and `dotnet-pack` fails when a package does not carry it.
+- Private feeds: `nuget-feed` writes the sources and credentials to the user-level NuGet config
+  with the password `%NUGET_FEED_TOKEN%`, so the token stays in the environment of the steps that
+  restore. It falls back to `github.token`. A repository nuget.config with `<clear />` keeps its
+  sources; those are listed by name only and get credentials.
+- Publishing: GitHub Packages with `github.token` (default), nuget.org trusted publishing through
+  NuGet/login (`nuget-user`, `id-token: write`), or an API key secret. `skip-duplicate` makes a
+  re-run pass. Symbol packages go to nuget.org only.
+- Left to the caller: HotCorners' Velopack release and WinGet's Nuke release; those repositories
+  use `dotnet.yml` for CI only.
+- Migration targets, each in its own pull request: Cleaner, HotCorners (CI), Platform.Updater,
+  Licensing, Platform, then WinGet (CI).
+
 ## Open questions
 
-1. Default runner OS — `ubuntu-latest` everywhere with `os` input, or `windows-latest` default for `dotnet.yml` (Cleaner/HotCorners/WinGet need Windows)?
-   Partly resolved: `node-ci.yml` and `pwsh-ci.yml` run on GitHub-hosted runners (an OS matrix rules
-   out the build-agent container) with `os` defaulting to `["ubuntu-latest"]`. Still open for `dotnet.yml`.
+1. ~~Default runner OS for `dotnet.yml`?~~ Resolved: `["ubuntu-latest"]`, as for every matrix
+   workflow; Windows repositories pass their own `os`.
 2. ~~Docs builder: PowerShell or a Node CLI?~~ Resolved: PowerShell, which the build-agent image already has.
 3. Starter workflows: add a `workflow-templates/` set to a `The-Running-Dev/.github` repository for the "New workflow" UI?
 4. Claude review: include it in the public library, or keep it as a SubZeroDev-only shared workflow?

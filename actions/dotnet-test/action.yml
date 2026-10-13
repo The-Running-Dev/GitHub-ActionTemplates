@@ -1,0 +1,81 @@
+name: dotnet test
+description: Restore, build and test a .NET solution or project, writing TRX results and, optionally, a merged Cobertura coverage report.
+author: The-Running-Dev
+
+inputs:
+  solution:
+    description: Solution (.slnx, .sln) or project file, relative to `working-directory`. Empty uses the only solution in the folder, else the only project.
+    required: false
+    default: ''
+  working-directory:
+    description: Folder the commands run in, relative to the workspace.
+    required: false
+    default: .
+  configuration:
+    description: Build configuration.
+    required: false
+    default: Release
+  restore-args:
+    description: Extra `dotnet restore` arguments, separated by spaces or new lines. Double quotes keep an argument with spaces together.
+    required: false
+    default: ''
+  build-args:
+    description: Extra `dotnet build` arguments.
+    required: false
+    default: ''
+  test:
+    description: '`false` only restores and builds.'
+    required: false
+    default: 'true'
+  test-args:
+    description: Extra `dotnet test` arguments.
+    required: false
+    default: ''
+  filter:
+    description: Test filter expression passed to `dotnet test --filter`, for example `Category!=Integration`.
+    required: false
+    default: ''
+  coverage:
+    description: '`true` collects coverage with coverlet (`--collect "XPlat Code Coverage"`; the test projects need the coverlet.collector package) and merges it into one Cobertura report.'
+    required: false
+    default: 'false'
+  enable-windows-targeting:
+    description: '`true` sets `EnableWindowsTargeting`, so Linux and macOS can restore and build `net*-windows` projects.'
+    required: false
+    default: 'false'
+  results-directory:
+    description: Folder for the TRX results and coverage, relative to the workspace. It is emptied first.
+    required: false
+    default: TestResults
+
+outputs:
+  results:
+    description: TRX results pattern relative to the workspace, empty when the tests did not run. Pass it to `test-report`.
+    value: ${{ steps.test.outputs.results }}
+  coverage-report:
+    description: Merged Cobertura report relative to the workspace, empty without coverage. Pass it to `coverage-gate`.
+    value: ${{ steps.test.outputs.coverage-report }}
+  solution:
+    description: Solution or project that was built, relative to the workspace.
+    value: ${{ steps.test.outputs.solution }}
+
+runs:
+  using: composite
+  steps:
+    - id: test
+      shell: pwsh
+      env:
+        INPUT_SOLUTION: ${{ inputs.solution }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_CONFIGURATION: ${{ inputs.configuration }}
+        INPUT_RESTORE_ARGS: ${{ inputs.restore-args }}
+        INPUT_BUILD_ARGS: ${{ inputs.build-args }}
+        INPUT_TEST: ${{ inputs.test }}
+        INPUT_TEST_ARGS: ${{ inputs.test-args }}
+        INPUT_FILTER: ${{ inputs.filter }}
+        INPUT_COVERAGE: ${{ inputs.coverage }}
+        INPUT_ENABLE_WINDOWS_TARGETING: ${{ inputs.enable-windows-targeting }}
+        INPUT_RESULTS_DIRECTORY: ${{ inputs.results-directory }}
+        DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+        DOTNET_NOLOGO: '1'
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH dotnet-test.ps1)'

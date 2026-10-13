@@ -12,7 +12,7 @@ The rules are in [docs/conventions.md](../../docs/conventions.md#versions).
 - id: version
   uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v0
   with:
-    strategy: manifest # tag | manifest | run-number
+    strategy: manifest # tag | manifest | run-number | gitversion
 
 - run: dotnet pack -p:Version="$VERSION"
   env:
@@ -23,12 +23,13 @@ The rules are in [docs/conventions.md](../../docs/conventions.md#versions).
 
 | Name | Default | Description |
 |---|---|---|
-| `strategy` | `tag` | `tag`: nearest `v*` tag, next patch as a prerelease. `manifest`: the version in the project manifest. `run-number`: `base-version` plus the run number. |
+| `strategy` | `tag` | `tag`: nearest `v*` tag, next patch as a prerelease. `manifest`: the version in the project manifest. `run-number`: `base-version` plus the run number. `gitversion`: the `SemVer` GitVersion computes, used as it is. |
 | `manifest` | auto-detected | Manifest path relative to `working-directory` (`manifest` strategy). |
 | `base-version` | | `Major.Minor` for the `run-number` strategy, for example `1.0`. |
 | `tag-prefix` | `v` | Prefix of release tags. |
 | `prerelease-label` | `ci` | Prerelease label for builds that are not tag builds. |
 | `pr-label` | `pr` | Prerelease label for pull request builds. |
+| `gitversion-version` | `6.8.2` | GitVersion.Tool to install for the `gitversion` strategy. A `dotnet-gitversion` already on `PATH`, or GitVersion.Tool in the repository's `.config/dotnet-tools.json`, is used instead. |
 | `working-directory` | `.` | Directory with the git checkout and manifest. |
 
 ## Outputs
@@ -47,4 +48,5 @@ The rules are in [docs/conventions.md](../../docs/conventions.md#versions).
 - A tag build whose tag does not start with `tag-prefix`.
 - `manifest` strategy on a tag build when the manifest version differs from the tag.
 - `run-number` strategy without a `Major.Minor` `base-version`.
+- `gitversion` strategy on a shallow clone (check out with `fetch-depth: 0`), or on a tag build when GitVersion's version differs from the tag.
 - A label containing characters other than `[0-9A-Za-z-]` and dots.

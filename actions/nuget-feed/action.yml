@@ -1,0 +1,41 @@
+name: NuGet feed
+description: Add private NuGet feeds and their credentials to the NuGet config, reading the token from an environment variable so no secret is written to disk.
+author: The-Running-Dev
+
+inputs:
+  sources:
+    description: >-
+      Feeds, one per line. `name=url` adds or updates a source with credentials; `name` alone adds
+      credentials for a source the repository's nuget.config already defines; `github` is GitHub
+      Packages of the repository owner.
+    required: false
+    default: github
+  username:
+    description: User name for the feeds. Empty uses the account that started the run.
+    required: false
+    default: ''
+  token-variable:
+    description: Environment variable that holds the feed token when dotnet runs. NuGet reads it then, so set it on the steps that restore, not on this one.
+    required: false
+    default: NUGET_FEED_TOKEN
+  config-file:
+    description: NuGet config to write, relative to the workspace. Empty writes the user-level config, which every project on the runner reads.
+    required: false
+    default: ''
+
+outputs:
+  config-file:
+    description: Full path of the NuGet config that was written.
+    value: ${{ steps.feed.outputs.config-file }}
+
+runs:
+  using: composite
+  steps:
+    - id: feed
+      shell: pwsh
+      env:
+        INPUT_SOURCES: ${{ inputs.sources }}
+        INPUT_USERNAME: ${{ inputs.username }}
+        INPUT_TOKEN_VARIABLE: ${{ inputs.token-variable }}
+        INPUT_CONFIG_FILE: ${{ inputs.config-file }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH nuget-feed.ps1)'

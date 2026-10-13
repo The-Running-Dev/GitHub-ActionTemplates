@@ -1,0 +1,23 @@
+name: .NET
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions: {}
+
+jobs:
+  dotnet:
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/dotnet.yml@v0
+    with:
+      os: '["ubuntu-latest", "windows-latest"]'
+      coverage: true
+      minimum-coverage: '60'
+      pack: true
+      github-release: true

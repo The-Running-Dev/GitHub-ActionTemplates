@@ -28,13 +28,14 @@ template does not guess.
 
 ## Versions
 
-The `version` action has three strategies. All produce SemVer 2.0 without build metadata.
+The `version` action has four strategies. All produce SemVer 2.0 without build metadata.
 
 | Strategy | Tag build `v1.2.3` | Default branch, run 57 | Pull request #12, run 57 |
 |---|---|---|---|
 | `tag` (nearest `v*` tag is `v1.2.2`) | `1.2.3` | `1.2.3-ci.57` | `1.2.3-pr.12.57` |
 | `manifest` (manifest says `1.2.3`) | `1.2.3`, fails if the tag differs | `1.2.3-ci.57` | `1.2.3-pr.12.57` |
 | `run-number` (`base-version: '1.2'`) | `1.2.3` (the tag) | `1.2.57` | `1.2.57-pr.12` |
+| `gitversion` | `1.2.3`, fails if GitVersion differs | GitVersion's `SemVer` | GitVersion's `SemVer` |
 
 - `tag`: after a stable tag, builds are prereleases of the next patch. After a prerelease tag
   (`v1.3.0-rc.1`) they stay on `1.3.0`. With no tags at all the base is `0.0.0`, so the first
@@ -44,6 +45,9 @@ The `version` action has three strategies. All produce SemVer 2.0 without build 
   has a prerelease part, the CI suffix is appended with a dot (`2.0.0-rc.1.ci.57`).
 - `run-number`: stable on the default branch, `-ci` on other branches, `-pr.<n>` on pull requests.
   Use it for things that are deployed rather than released.
+- `gitversion`: GitVersion's `SemVer`, with the branch rules of the repository's `GitVersion.yml`.
+  Uses GitVersion.Tool from the repository's tool manifest when it lists it, else installs the
+  pinned `gitversion-version`. Needs `fetch-depth: 0` (fails on a shallow clone).
 
 The release tag is always the version with the `tag-prefix` (default `v`) in front.
 

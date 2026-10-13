@@ -258,3 +258,122 @@ Describe 'Get-PackageManager' {
         { Get-PackageManager $TestDrive 'bun' } | Should -Throw "*Unknown package-manager 'bun'*"
     }
 }
+
+Describe 'Split-CommandLine' {
+    It 'splits <Name>' -ForEach @(
+        @{ Name = 'spaces and new lines'; Value = "--no-restore  -v q`r`n--blame`n"; Expected = @('--no-restore', '-v', 'q', '--blame') }
+        @{ Name = 'quoted text as one argument'; Value = '--logger "trx;LogFileName=a b.trx" -x'; Expected = @('--logger', 'trx;LogFileName=a b.trx', '-x') }
+        @{ Name = 'a quoted part of an argument'; Value = '-p:Name="A B"'; Expected = @('-p:Name=A B') }
+        @{ Name = 'keeping semicolons'; Value = '-p:A=1;B=2'; Expected = @('-p:A=1;B=2') }
+    ) {
+        Split-CommandLine $Value | Should -Be $Expected
+    }
+
+    It 'keeps an empty quoted argument' {
+        $arguments = Split-CommandLine '-p:Empty= ""'
+        $arguments | Should -HaveCount 2
+        $arguments[1] | Should -BeExactly ''
+    }
+
+    It 'returns nothing for <Name>' -ForEach @(
+        @{ Name = 'an empty value'; Value = '' }
+        @{ Name = 'white space only'; Value = " `r`n `t" }
+    ) {
+        @(Split-CommandLine $Value) | Should -HaveCount 0
+    }
+
+    It 'rejects an unbalanced quote' {
+        { Split-CommandLine '--filter "Category=Slow' } | Should -Throw '*Unbalanced double quote*'
+    }
+}
+
+Describe 'Find-DotnetProject' {
+    BeforeAll {
+        $script:Workspace = Join-Path $TestDrive 'dotnet'
+        function New-Folder([string[]] $Files) {
+            $folder = New-Item -ItemType Directory -Path (Join-Path $Workspace ([guid]::NewGuid().ToString('n')))
+            foreach ($file in $Files) { New-Item -ItemType File -Path (Join-Path $folder $file) -Force | Out-Null }
+            return $folder.FullName
+        }
+    }
+
+    It 'picks <Expected> from <Files>' -ForEach @(
+        @{ Files = @('App.slnx', 'App.sln', 'App.csproj'); Expected = 'App.slnx' }
+        @{ Files = @('App.sln', 'App.csproj'); Expected = 'App.sln' }
+        @{ Files = @('App.fsproj', 'README.md'); Expected = 'App.fsproj' }
+    ) {
+        $folder = New-Folder $Files
+        Find-DotnetProject $folder $Workspace | Should -Be (Join-Path $folder $Expected)
+    }
+
+    It 'returns the given solution' {
+        $folder = New-Folder @('A.slnx', 'B.slnx')
+        Find-DotnetProject $folder $Workspace 'B.slnx' | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $folder 'B.slnx')))
+    }
+
+    It 'fails when the given solution is missing' {
+        $folder = New-Folder @('A.slnx')
+        { Find-DotnetProject $folder $Workspace 'B.slnx' } | Should -Throw "*'B.slnx' does not exist*"
+    }
+
+    It 'fails with several solutions' {
+        $folder = New-Folder @('A.slnx', 'B.slnx')
+        { Find-DotnetProject $folder $Workspace } | Should -Throw "*has 2 *.slnx files; set 'solution'*"
+    }
+
+    It 'fails with no solution or project' {
+        $folder = New-Folder @('README.md')
+        { Find-DotnetProject $folder $Workspace } | Should -Throw '*has no solution or project file*'
+    }
+}
+
+Describe 'Merge-CoberturaReport' {
+    BeforeAll {
+        function New-Report([string] $Name, [string] $Source, [string] $File, [hashtable] $Hits) {
+            $lines = ($Hits.GetEnumerator() | ForEach-Object { "<line number=`"$($_.Key)`" hits=`"$($_.Value)`" />" }) -join ''
+            $path = Join-Path $TestDrive "$Name.xml"
+            Set-Content -LiteralPath $path -Value @"
+<?xml version="1.0" encoding="utf-8"?>
+<coverage line-rate="0" version="1.9"><sources><source>$Source</source></sources>
+<packages><package name="App"><classes><class name="App.Calc" filename="$File"><lines>$lines</lines></class></classes></package></packages></coverage>
+"@
+            return $path
+        }
+        $script:Root = [System.IO.Path]::GetFullPath((Join-Path $TestDrive 'src'))
+    }
+
+    It 'counts each line once, covered when any report covers it' {
+        $a = New-Report 'a' $Root 'Calc.cs' @{ 1 = 2; 2 = 0; 3 = 0 }
+        $b = New-Report 'b' $Root 'Calc.cs' @{ 1 = 1; 2 = 3; 3 = 0 }
+        $merged = Join-Path $TestDrive 'merged.xml'
+
+        Merge-CoberturaReport -Path $a, $b -Destination $merged
+
+        $coverage = ([xml] (Get-Content -LiteralPath $merged -Raw)).coverage
+        $coverage.'lines-valid' | Should -Be '3'
+        $coverage.'lines-covered' | Should -Be '2'
+        $coverage.'line-rate' | Should -Be '0.6667'
+        $line = $coverage.SelectSingleNode('//line[@number="1"]')
+        $line.hits | Should -Be '3'
+    }
+
+    It 'joins relative file names to the source, so reports with different sources agree' {
+        $a = New-Report 'rel' $Root 'Calc.cs' @{ 1 = 1; 2 = 0 }
+        $b = New-Report 'abs' (Join-Path $Root 'other') (Join-Path $Root 'Calc.cs') @{ 2 = 1 }
+        $merged = Join-Path $TestDrive 'joined.xml'
+
+        Merge-CoberturaReport -Path $a, $b -Destination $merged
+
+        $coverage = ([xml] (Get-Content -LiteralPath $merged -Raw)).coverage
+        @($coverage.SelectNodes('//class')) | Should -HaveCount 1
+        $coverage.SelectSingleNode('//class').filename | Should -Be (Join-Path $Root 'Calc.cs')
+        $coverage.'line-rate' | Should -Be '1'
+    }
+
+    It 'rejects a report that is not Cobertura' {
+        $other = Join-Path $TestDrive 'jacoco.xml'
+        Set-Content -LiteralPath $other -Value '<report name="x" />'
+
+        { Merge-CoberturaReport -Path $other -Destination (Join-Path $TestDrive 'x.xml') } | Should -Throw '*is not a Cobertura report*'
+    }
+}

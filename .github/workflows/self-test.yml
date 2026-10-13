@@ -191,6 +191,89 @@ jobs:
       github-release: false
       artifact-name: ci-npm-package
 
+  # Builds, tests and packs the fixture solution; publish is off. The fixture's version cannot
+  # match a tag of this repository, so tag builds only test.
+  dotnet:
+    name: .NET
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: $/.github/workflows/dotnet.yml
+    with:
+      working-directory: tests/fixtures/dotnet-solution
+      os: '["ubuntu-latest", "windows-latest"]'
+      dotnet-version: 10.0.x
+      test-filter: Category!=Slow
+      coverage: true
+      minimum-coverage: '60'
+      artifact-name: ci-dotnet
+      pack: ${{ github.ref_type != 'tag' }}
+      package-artifact-name: ci-nupkg
+      publish: false
+
+  # The NuGet actions that dotnet.yml does not run in the self-test.
+  dotnet-actions:
+    name: .NET actions (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: version (gitversion)
+        id: gitversion
+        uses: $/actions/version
+        with:
+          strategy: gitversion
+
+      - name: nuget-feed
+        id: feed
+        uses: $/actions/nuget-feed
+        with:
+          sources: |
+            github
+            fixture=https://nuget.example.test/v3/index.json
+          # Outside the fixture, so its restore does not read the fake feed.
+          config-file: .selftest/nuget.config
+
+      - name: dotnet-pack
+        id: pack
+        uses: $/actions/dotnet-pack
+        with:
+          working-directory: tests/fixtures/dotnet-solution
+          version: 1.4.2-selftest.${{ github.run_number }}
+
+      - name: nuget-push
+        id: push
+        uses: $/actions/nuget-push
+        with:
+          source: nuget.org
+          dry-run: true
+
+      - name: Check outputs
+        shell: pwsh
+        env:
+          GITVERSION_VERSION: ${{ steps.gitversion.outputs.version }}
+          FEED_CONFIG: ${{ steps.feed.outputs.config-file }}
+          PACK_COUNT: ${{ steps.pack.outputs.count }}
+          PACK_PACKAGES: ${{ steps.pack.outputs.packages }}
+          PUSH_PUBLISHED: ${{ steps.push.outputs.published }}
+          PUSH_COUNT: ${{ steps.push.outputs.count }}
+          PUSH_SOURCE: ${{ steps.push.outputs.source }}
+        run: ./scripts/Test-DotnetOutputs.ps1
+
   # Builds and smoke-tests the fixture image; push is off, so Publish and Deploy skip.
   container:
     name: Container
@@ -317,8 +400,8 @@ jobs:
 
   ci-check:
     name: CI artifacts
-    needs: [node-ci, pwsh-ci, npm-package]
-    if: ${{ !cancelled() && needs.node-ci.result == 'success' && needs.pwsh-ci.result == 'success' && needs.npm-package.result != 'failure' }}
+    needs: [node-ci, pwsh-ci, npm-package, dotnet]
+    if: ${{ !cancelled() && needs.node-ci.result == 'success' && needs.pwsh-ci.result == 'success' && needs.npm-package.result != 'failure' && needs.dotnet.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -336,4 +419,5 @@ jobs:
         shell: pwsh
         env:
           EXPECT_PACKAGE: ${{ needs.npm-package.result == 'success' }}
-        run: ./scripts/Test-CiArtifacts.ps1 -ExpectPackage:($env:EXPECT_PACKAGE -eq 'true')
+          EXPECT_NUGET_PACKAGE: ${{ github.ref_type != 'tag' }}
+        run: ./scripts/Test-CiArtifacts.ps1 -ExpectPackage:($env:EXPECT_PACKAGE -eq 'true') -ExpectNuGetPackage:($env:EXPECT_NUGET_PACKAGE -eq 'true')

@@ -704,4 +704,138 @@ function Format-MarkdownCell {
     return $line
 }
 
+function Split-CommandLine {
+    <#
+    .SYNOPSIS
+    Splits an arguments input into separate arguments: on white space and new lines, keeping text
+    in double quotes together (the quotes are removed). Semicolons are kept, for `-p:A=1;B=2`.
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param([AllowEmptyString()][string] $Value)
+
+    $arguments = [System.Collections.Generic.List[string]]::new()
+    $current = [System.Text.StringBuilder]::new()
+    $quoted = $false
+    $started = $false
+    foreach ($char in $Value.ToCharArray()) {
+        if ($char -eq '"') { $quoted = -not $quoted; $started = $true; continue }
+        if (-not $quoted -and [char]::IsWhiteSpace($char)) {
+            if ($started) { $arguments.Add($current.ToString()); [void] $current.Clear(); $started = $false }
+            continue
+        }
+        [void] $current.Append($char)
+        $started = $true
+    }
+    if ($quoted) { throw "Unbalanced double quote in the arguments '$Value'." }
+    if ($started) { $arguments.Add($current.ToString()) }
+
+    return [string[]] $arguments.ToArray()
+}
+
+function Find-DotnetProject {
+    <#
+    .SYNOPSIS
+    Returns the full path of the solution or project to build: the given one (relative to the
+    folder), else the only .slnx, else the only .sln, else the only project file in the folder.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string] $Folder,
+        [Parameter(Mandatory)][string] $Workspace,
+        [string] $Solution = ''
+    )
+
+    if ($Solution) {
+        $path = Resolve-WorkspacePath (Join-Path $Folder $Solution) $Workspace 'solution'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "The solution '$Solution' does not exist in '$Folder'." }
+        return $path
+    }
+
+    foreach ($filter in @('*.slnx'), @('*.sln'), @('*.csproj', '*.fsproj', '*.vbproj')) {
+        $found = @($filter | ForEach-Object { Get-ChildItem -LiteralPath $Folder -Filter $_ -File })
+        if ($found.Count -eq 1) { return $found[0].FullName }
+        if ($found.Count -gt 1) { throw "'$Folder' has $($found.Count) $($filter -join '/') files; set 'solution' to the one to build." }
+    }
+
+    throw "'$Folder' has no solution or project file; set 'solution' or 'working-directory'."
+}
+
+function Merge-CoberturaReport {
+    <#
+    .SYNOPSIS
+    Merges Cobertura reports into one, counting each source line once: a line is covered when any
+    report covers it. Separate test projects that exercise the same assembly each report it, and
+    summing their reports would count its lines twice.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string[]] $Path,
+        [Parameter(Mandatory)][string] $Destination
+    )
+
+    # file -> line number -> hits, and file -> class name, in first-seen order.
+    $files = [ordered]@{}
+    $classes = @{}
+    foreach ($report in $Path) {
+        $root = (Read-XmlFile $report).DocumentElement
+        if ($root.LocalName -ne 'coverage') { throw "'$report' is not a Cobertura report." }
+        $sources = @($root.SelectNodes('sources/source') | ForEach-Object { $_.InnerText.Trim() } | Where-Object { $_ })
+        foreach ($class in $root.SelectNodes('//class')) {
+            $name = $class.GetAttribute('filename')
+            # Relative file names are relative to a <source>; make them absolute so reports agree.
+            if ($sources.Count -eq 1 -and -not [System.IO.Path]::IsPathRooted($name)) { $name = Join-Path $sources[0] $name }
+            if (-not $files.Contains($name)) { $files[$name] = [System.Collections.Generic.SortedDictionary[int, long]]::new(); $classes[$name] = $class.GetAttribute('name') }
+            foreach ($line in $class.SelectNodes('lines/line')) {
+                $number = [int] $line.GetAttribute('number')
+                $hits = [long] $line.GetAttribute('hits')
+                $lines = $files[$name]
+                $lines[$number] = if ($lines.ContainsKey($number)) { $lines[$number] + $hits } else { $hits }
+            }
+        }
+    }
+
+    $valid = 0L; $covered = 0L
+    foreach ($lines in $files.Values) {
+        $valid += $lines.Count
+        $covered += @($lines.Values | Where-Object { $_ -gt 0 }).Count
+    }
+    $rate = if ($valid) { [math]::Round($covered / $valid, 4) } else { 0 }
+
+    $settings = [System.Xml.XmlWriterSettings]::new()
+    $settings.Indent = $true
+    $writer = [System.Xml.XmlWriter]::Create($Destination, $settings)
+    try {
+        $writer.WriteStartElement('coverage')
+        $writer.WriteAttributeString('line-rate', $rate.ToString([cultureinfo]::InvariantCulture))
+        $writer.WriteAttributeString('lines-covered', "$covered")
+        $writer.WriteAttributeString('lines-valid', "$valid")
+        $writer.WriteAttributeString('version', '1.9')
+        $writer.WriteAttributeString('timestamp', "$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())")
+        $writer.WriteStartElement('packages')
+        $writer.WriteStartElement('package')
+        $writer.WriteAttributeString('name', 'merged')
+        $writer.WriteStartElement('classes')
+        foreach ($name in $files.Keys) {
+            $writer.WriteStartElement('class')
+            $writer.WriteAttributeString('name', $classes[$name])
+            $writer.WriteAttributeString('filename', $name)
+            $writer.WriteStartElement('lines')
+            foreach ($entry in $files[$name].GetEnumerator()) {
+                $writer.WriteStartElement('line')
+                $writer.WriteAttributeString('number', "$($entry.Key)")
+                $writer.WriteAttributeString('hits', "$($entry.Value)")
+                $writer.WriteEndElement()
+            }
+            $writer.WriteEndElement()
+            $writer.WriteEndElement()
+        }
+        $writer.WriteEndDocument()
+    }
+    finally { $writer.Dispose() }
+
+    [pscustomobject]@{ Path = $Destination; Reports = $Path.Count; Covered = $covered; Total = $valid }
+}
+
 Export-ModuleMember -Function *-*

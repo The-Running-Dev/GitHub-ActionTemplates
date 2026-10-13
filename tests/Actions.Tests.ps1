@@ -122,6 +122,65 @@ Describe 'version' {
         }
     }
 
+    Context 'gitversion strategy' {
+        BeforeAll {
+            # The dotnet-gitversion.ps1 stub prints STUB_SEMVER as GitVersion's JSON.
+            $script:Stubs = Join-Path $Fixtures 'cli-stubs'
+            function Invoke-GitVersion([hashtable] $Environment, [string] $WorkingDirectory = $Released) {
+                $Environment['INPUT_STRATEGY'] = 'gitversion'
+                $Environment['PATH'] = "$Stubs$([System.IO.Path]::PathSeparator)$env:PATH"
+                Invoke-Version $Environment $WorkingDirectory
+            }
+        }
+
+        It 'uses the GitVersion SemVer as it is' {
+            $result = Invoke-GitVersion @{ STUB_SEMVER = '1.3.0-alpha.4' }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Log
+            $result.Outputs['version'] | Should -Be '1.3.0-alpha.4'
+            $result.Outputs['prerelease'] | Should -Be 'alpha.4'
+            $result.Summary | Should -Match 'GitVersion \(1\.3\.0-alpha\.4\)'
+        }
+
+        It 'passes on a tag build that matches GitVersion' {
+            $result = Invoke-GitVersion @{ STUB_SEMVER = '1.2.3'; GITHUB_REF_TYPE = 'tag'; GITHUB_REF_NAME = 'v1.2.3' }
+
+            $result.ExitCode | Should -Be 0 -Because $result.Log
+            $result.Outputs['is-release'] | Should -Be 'true'
+        }
+
+        It 'fails on a tag build that GitVersion disagrees with' {
+            $result = Invoke-GitVersion @{ STUB_SEMVER = '1.2.4-beta.1'; GITHUB_REF_TYPE = 'tag'; GITHUB_REF_NAME = 'v1.2.3' }
+
+            $result.ExitCode | Should -Not -Be 0
+            $result.Log | Should -Match 'does not match version'
+        }
+
+        It 'fails when GitVersion fails' {
+            $result = Invoke-GitVersion @{ STUB_SEMVER = '' }
+
+            $result.ExitCode | Should -Not -Be 0
+            $result.Log | Should -Match 'GitVersion failed with exit code 1'
+        }
+
+        It 'fails on a shallow clone' {
+            $shallow = Join-Path $TestDrive 'shallow'
+            git clone --quiet --depth 1 "file://$($Candidate.Replace('\', '/'))" $shallow 2>&1 | Out-Null
+
+            $result = Invoke-GitVersion @{ STUB_SEMVER = '1.0.0' } $shallow
+
+            $result.ExitCode | Should -Not -Be 0
+            $result.Log | Should -Match 'fetch-depth 0'
+        }
+
+        It 'rejects a gitversion-version that is not Major.Minor.Patch' {
+            $result = Invoke-GitVersion @{ STUB_SEMVER = '1.0.0'; INPUT_GITVERSION_VERSION = 'latest' }
+
+            $result.ExitCode | Should -Not -Be 0
+            $result.Log | Should -Match 'gitversion-version'
+        }
+    }
+
     It 'rejects an unknown strategy' {
         $result = Invoke-Version @{ INPUT_STRATEGY = 'calendar' }
         $result.ExitCode | Should -Not -Be 0

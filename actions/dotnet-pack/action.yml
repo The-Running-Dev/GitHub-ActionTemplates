@@ -1,0 +1,61 @@
+name: dotnet pack
+description: Pack a .NET solution or project into NuGet packages, stamping a computed version and a deterministic CI build.
+author: The-Running-Dev
+
+inputs:
+  solution:
+    description: Solution (.slnx, .sln) or project file, relative to `working-directory`. Empty uses the only solution in the folder, else the only project. Projects with `IsPackable` false are skipped.
+    required: false
+    default: ''
+  working-directory:
+    description: Folder the command runs in, relative to the workspace.
+    required: false
+    default: .
+  configuration:
+    description: Build configuration.
+    required: false
+    default: Release
+  version:
+    description: Package version (`-p:Version`). Empty keeps the version the projects set.
+    required: false
+    default: ''
+  args:
+    description: Extra `dotnet pack` arguments, separated by spaces or new lines. Double quotes keep an argument with spaces together.
+    required: false
+    default: ''
+  enable-windows-targeting:
+    description: '`true` sets `EnableWindowsTargeting`, so Linux and macOS can pack `net*-windows` projects.'
+    required: false
+    default: 'false'
+  destination:
+    description: Folder the packages are written to, relative to the workspace. It is emptied first.
+    required: false
+    default: dist-nuget
+
+outputs:
+  packages:
+    description: Package files (.nupkg and .snupkg) relative to the workspace, one per line.
+    value: ${{ steps.pack.outputs.packages }}
+  count:
+    description: Number of .nupkg files.
+    value: ${{ steps.pack.outputs.count }}
+  destination:
+    description: Folder with the packages, relative to the workspace.
+    value: ${{ steps.pack.outputs.destination }}
+
+runs:
+  using: composite
+  steps:
+    - id: pack
+      shell: pwsh
+      env:
+        INPUT_SOLUTION: ${{ inputs.solution }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_CONFIGURATION: ${{ inputs.configuration }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_ARGS: ${{ inputs.args }}
+        INPUT_ENABLE_WINDOWS_TARGETING: ${{ inputs.enable-windows-targeting }}
+        INPUT_DESTINATION: ${{ inputs.destination }}
+        DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+        DOTNET_NOLOGO: '1'
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH dotnet-pack.ps1)'

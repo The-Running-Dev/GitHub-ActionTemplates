@@ -1,0 +1,56 @@
+name: NuGet push
+description: Push NuGet packages to GitHub Packages, nuget.org or another feed, skipping versions that are already there.
+author: The-Running-Dev
+
+inputs:
+  packages:
+    description: .nupkg files relative to the workspace, one per line. Wildcards are allowed and `**/` searches folders. A .snupkg next to a .nupkg is pushed with it.
+    required: false
+    default: dist-nuget/*.nupkg
+  source:
+    description: '`github` (GitHub Packages of the repository owner), `nuget.org`, or a feed URL.'
+    required: false
+    default: github
+  api-key:
+    description: API key for the feed. For GitHub Packages, a token with `packages:write` (`github.token` works when the caller grants it).
+    required: false
+    default: ''
+  skip-duplicate:
+    description: '`true` treats a version that is already on the feed as pushed instead of failing, so a re-run passes.'
+    required: false
+    default: 'true'
+  symbols:
+    description: '`false` does not push .snupkg symbol packages. GitHub Packages never gets them; it has no symbol server.'
+    required: false
+    default: 'true'
+  dry-run:
+    description: '`true` lists what would be pushed without pushing.'
+    required: false
+    default: 'false'
+
+outputs:
+  published:
+    description: '`true` when the packages were pushed (or were already there with `skip-duplicate`).'
+    value: ${{ steps.push.outputs.published }}
+  count:
+    description: Number of .nupkg files pushed.
+    value: ${{ steps.push.outputs.count }}
+  source:
+    description: Feed URL the packages were pushed to.
+    value: ${{ steps.push.outputs.source }}
+
+runs:
+  using: composite
+  steps:
+    - id: push
+      shell: pwsh
+      env:
+        INPUT_PACKAGES: ${{ inputs.packages }}
+        INPUT_SOURCE: ${{ inputs.source }}
+        INPUT_API_KEY: ${{ inputs.api-key }}
+        INPUT_SKIP_DUPLICATE: ${{ inputs.skip-duplicate }}
+        INPUT_SYMBOLS: ${{ inputs.symbols }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+        DOTNET_NOLOGO: '1'
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH nuget-push.ps1)'
