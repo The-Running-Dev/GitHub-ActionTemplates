@@ -6,6 +6,19 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `dotnet.yml` reusable workflow: builds and tests a .NET solution on each runner in `os`, with a
+  test report and a coverage gate over the merged coverlet reports; with `pack` it packs the
+  NuGet packages once and publishes them from tags (and optionally the default branch) to GitHub
+  Packages, nuget.org (trusted publishing or API key) or another feed, then can create the
+  GitHub release with the packages attached. See [`docs/dotnet.md`](docs/dotnet.md).
+- Actions `nuget-feed` (private feed credentials with the token read from the environment),
+  `dotnet-test` (restore, build, test with TRX results and merged coverage), `dotnet-pack`
+  (pack with a computed version in a deterministic CI build) and `nuget-push` (push, skipping
+  versions already on the feed).
+- `version` has a `gitversion` strategy (GitVersion.Tool from the repository's tool manifest, or
+  the pinned `gitversion-version`).
+
 ## [0.6.0] - 2026-10-12
 
 ### Added

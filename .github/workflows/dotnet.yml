@@ -1,0 +1,502 @@
+name: .NET
+
+# Builds and tests a .NET solution on each runner in `os`, with a test report and an optional
+# coverage gate. With `pack`, it packs the NuGet packages once and publishes them: to GitHub
+# Packages (or nuget.org) from a version tag, and optionally as prereleases from the default
+# branch. A tag build can also create the GitHub release with the packages attached.
+#
+# Private feeds get credentials from `nuget-sources`, with the token in NUGET_FEED_TOKEN (the
+# secret, else `github.token`). The caller grants `contents: read` and `packages: read`; publishing
+# also needs `packages: write` and `id-token: write`, and a release `contents: write`.
+# See docs/dotnet.md.
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: JSON list of runners to build and test on, for example `'["ubuntu-latest", "windows-latest"]'`.
+        type: string
+        default: '["ubuntu-latest"]'
+      dotnet-version:
+        description: SDK versions for actions/setup-dotnet, one per line (`10.0.x`). Empty uses `global-json-file`, else the SDK on the runner.
+        type: string
+        default: ''
+      global-json-file:
+        description: global.json that pins the SDK, from the repository root. Used when it exists.
+        type: string
+        default: global.json
+      working-directory:
+        description: Folder with the solution, relative to the repository root.
+        type: string
+        default: .
+      solution:
+        description: Solution or project file in `working-directory`. Empty finds the only .slnx, .sln or project file there.
+        type: string
+        default: ''
+      configuration:
+        description: Build configuration.
+        type: string
+        default: Release
+      enable-windows-targeting:
+        description: Build Windows projects (WPF, WinForms, net*-windows) on Linux and macOS runners.
+        type: boolean
+        default: false
+      restore-args:
+        description: Extra `dotnet restore` arguments.
+        type: string
+        default: ''
+      build-args:
+        description: Extra `dotnet build` arguments.
+        type: string
+        default: ''
+      test:
+        description: Run `dotnet test`. `false` only builds.
+        type: boolean
+        default: true
+      test-args:
+        description: Extra `dotnet test` arguments.
+        type: string
+        default: ''
+      test-filter:
+        description: '`dotnet test --filter` expression, for example `Category!=Integration`.'
+        type: string
+        default: ''
+      coverage:
+        description: Collect coverage with coverlet. Each test project needs the coverlet.collector package.
+        type: boolean
+        default: false
+      minimum-coverage:
+        description: Minimum line coverage in percent; 0 reports coverage without failing.
+        type: string
+        default: '0'
+      nuget-sources:
+        description: >-
+          Private feeds that need credentials, one per line: `name=url`, `name` for a source the
+          repository's nuget.config defines, or `github` for GitHub Packages of the repository
+          owner. Empty adds none.
+        type: string
+        default: ''
+      pre-build:
+        description: Repository scripts run before the restore in every job that builds, by path from the repository root, one per line. `.ps1` files run in PowerShell.
+        type: string
+        default: ''
+      post-build:
+        description: Repository scripts run after the tests, by path from the repository root, one per line.
+        type: string
+        default: ''
+      artifact-name:
+        description: Name prefix of the test results artifact; the runner is appended.
+        type: string
+        default: dotnet-test
+      retention-days:
+        description: Days to keep the test results and packages artifacts.
+        type: number
+        default: 7
+      pack:
+        description: Pack the NuGet packages after the tests pass, and publish them per `publish`.
+        type: boolean
+        default: false
+      pack-os:
+        description: Runner that packs. Empty uses the first entry of `os`.
+        type: string
+        default: ''
+      pack-args:
+        description: Extra `dotnet pack` arguments.
+        type: string
+        default: ''
+      version-strategy:
+        description: '`manifest` (the `<Version>` in Directory.Build.props or the project), `tag`, `run-number` or `gitversion`. See actions/version.'
+        type: string
+        default: manifest
+      manifest:
+        description: Manifest with the version, relative to `working-directory` (manifest strategy). Empty finds it.
+        type: string
+        default: ''
+      base-version:
+        description: Major.Minor for the run-number strategy.
+        type: string
+        default: ''
+      tag-prefix:
+        description: Prefix of release tags.
+        type: string
+        default: v
+      prerelease-label:
+        description: Prerelease label of builds that are not tag builds.
+        type: string
+        default: ci
+      gitversion-version:
+        description: GitVersion.Tool version for the gitversion strategy.
+        type: string
+        default: 6.8.2
+      package-artifact-name:
+        description: Name of the packages artifact.
+        type: string
+        default: nuget-packages
+      publish:
+        description: Publish the packages from tag builds. `false` only packs.
+        type: boolean
+        default: true
+      publish-prereleases:
+        description: Also publish default-branch builds as prereleases (`1.2.3-ci.57`).
+        type: boolean
+        default: false
+      nuget-source:
+        description: '`github` (GitHub Packages of the repository owner), `nuget.org`, or a feed URL.'
+        type: string
+        default: github
+      nuget-user:
+        description: nuget.org account for trusted publishing (NuGet/login). Empty uses the NUGET_API_KEY secret.
+        type: string
+        default: ''
+      environment:
+        description: Environment the Publish job runs in, for approvals and environment secrets. Empty uses none.
+        type: string
+        default: ''
+      skip-duplicate:
+        description: Treat a version that is already on the feed as published, so a re-run passes.
+        type: boolean
+        default: true
+      post-publish:
+        description: Repository scripts run after publishing, by path from the repository root, one per line. They get PACKAGE_VERSION and NUGET_FEED_TOKEN.
+        type: string
+        default: ''
+      github-release:
+        description: Create the GitHub release for a tag build, with the packages attached.
+        type: boolean
+        default: false
+      changelog:
+        description: CHANGELOG with the release notes, from the repository root. A tag build needs its section.
+        type: string
+        default: CHANGELOG.md
+      gates-file:
+        description: Gates file checked against the workflows that call this library (see docs/gates.md). Skipped when the file does not exist; empty turns the check off.
+        type: string
+        default: .github/gates.json
+      fetch-depth:
+        description: Commits to fetch; 0 fetches all history. The tag and gitversion strategies always fetch all of it to pack.
+        type: number
+        default: 1
+      submodules:
+        description: '`true`, `recursive` or `false`, as for actions/checkout.'
+        type: string
+        default: 'false'
+      timeout-minutes:
+        description: Timeout of the test and pack jobs.
+        type: number
+        default: 30
+    secrets:
+      NUGET_FEED_TOKEN:
+        description: Token for the private feeds in `nuget-sources`. Without it `github.token` is used, which reads packages of the same owner that granted this repository access.
+        required: false
+      NUGET_API_KEY:
+        description: API key for `nuget-source`. Not needed for GitHub Packages (`github.token`) or with `nuget-user`.
+        required: false
+    outputs:
+      version:
+        description: Package version that was packed, empty without `pack`.
+        value: ${{ jobs.pack.outputs.version }}
+      published:
+        description: '`true` when the packages were published.'
+        value: ${{ jobs.publish.outputs.published }}
+      release-url:
+        description: GitHub release URL, empty when no release was created.
+        value: ${{ jobs.release.outputs.url }}
+
+permissions: {}
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: ${{ inputs.fetch-depth }}
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      # Once per run: the check reads the caller's workflows, which no matrix entry changes.
+      - name: Gates
+        if: strategy.job-index == 0 && inputs.gates-file != '' && hashFiles(inputs.gates-file) != ''
+        uses: $/actions/gates
+        with:
+          file: ${{ inputs.gates-file }}
+
+      - name: .NET
+        if: inputs.dotnet-version != '' || (inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '')
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+          global-json-file: ${{ inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '' && inputs.global-json-file || '' }}
+
+      - name: Feeds
+        if: inputs.nuget-sources != ''
+        uses: $/actions/nuget-feed
+        with:
+          sources: ${{ inputs.nuget-sources }}
+
+      - name: Pre-build
+        if: inputs.pre-build != ''
+        uses: $/actions/run-scripts
+        env:
+          NUGET_FEED_TOKEN: ${{ secrets.NUGET_FEED_TOKEN || github.token }}
+        with:
+          scripts: ${{ inputs.pre-build }}
+
+      - name: Build and test
+        id: test
+        uses: $/actions/dotnet-test
+        env:
+          NUGET_FEED_TOKEN: ${{ secrets.NUGET_FEED_TOKEN || github.token }}
+        with:
+          solution: ${{ inputs.solution }}
+          working-directory: ${{ inputs.working-directory }}
+          configuration: ${{ inputs.configuration }}
+          enable-windows-targeting: ${{ inputs.enable-windows-targeting }}
+          restore-args: ${{ inputs.restore-args }}
+          build-args: ${{ inputs.build-args }}
+          test: ${{ inputs.test }}
+          test-args: ${{ inputs.test-args }}
+          filter: ${{ inputs.test-filter }}
+          coverage: ${{ inputs.coverage }}
+
+      - name: Test report
+        if: ${{ !cancelled() && steps.test.outputs.results != '' }}
+        uses: $/actions/test-report
+        with:
+          results: ${{ steps.test.outputs.results }}
+          title: Tests (${{ matrix.os }})
+
+      - name: Coverage
+        if: steps.test.outputs.coverage-report != ''
+        uses: $/actions/coverage-gate
+        with:
+          reports: ${{ steps.test.outputs.coverage-report }}
+          minimum: ${{ inputs.minimum-coverage }}
+          title: Coverage (${{ matrix.os }})
+
+      - name: Post-build
+        if: inputs.post-build != ''
+        uses: $/actions/run-scripts
+        env:
+          NUGET_FEED_TOKEN: ${{ secrets.NUGET_FEED_TOKEN || github.token }}
+        with:
+          scripts: ${{ inputs.post-build }}
+
+      - name: Upload
+        if: ${{ !cancelled() && steps.test.outputs.results != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-name }}-${{ matrix.os }}
+          path: |
+            ${{ steps.test.outputs.results }}
+            ${{ steps.test.outputs.coverage-report }}
+          retention-days: ${{ inputs.retention-days }}
+          if-no-files-found: warn
+
+  pack:
+    name: Pack
+    needs: test
+    if: inputs.pack
+    runs-on: ${{ inputs.pack-os != '' && inputs.pack-os || fromJSON(inputs.os)[0] }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is-tag: ${{ steps.context.outputs.is-tag }}
+      is-default-branch: ${{ steps.context.outputs.is-default-branch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Both strategies read the tag history.
+          fetch-depth: ${{ (inputs.version-strategy == 'gitversion' || inputs.version-strategy == 'tag') && '0' || inputs.fetch-depth }}
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: .NET
+        if: inputs.dotnet-version != '' || (inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '')
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+          global-json-file: ${{ inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '' && inputs.global-json-file || '' }}
+
+      - name: Context
+        id: context
+        uses: $/actions/context
+
+      # On a tag build this fails unless the tag matches the version.
+      - name: Version
+        id: version
+        uses: $/actions/version
+        with:
+          strategy: ${{ inputs.version-strategy }}
+          manifest: ${{ inputs.manifest }}
+          base-version: ${{ inputs.base-version }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+          prerelease-label: ${{ inputs.prerelease-label }}
+          gitversion-version: ${{ inputs.gitversion-version }}
+          working-directory: ${{ inputs.working-directory }}
+
+      - name: Feeds
+        if: inputs.nuget-sources != ''
+        uses: $/actions/nuget-feed
+        with:
+          sources: ${{ inputs.nuget-sources }}
+
+      - name: Pre-build
+        if: inputs.pre-build != ''
+        uses: $/actions/run-scripts
+        env:
+          NUGET_FEED_TOKEN: ${{ secrets.NUGET_FEED_TOKEN || github.token }}
+        with:
+          scripts: ${{ inputs.pre-build }}
+
+      - name: Pack
+        id: pack
+        uses: $/actions/dotnet-pack
+        env:
+          NUGET_FEED_TOKEN: ${{ secrets.NUGET_FEED_TOKEN || github.token }}
+        with:
+          solution: ${{ inputs.solution }}
+          working-directory: ${{ inputs.working-directory }}
+          configuration: ${{ inputs.configuration }}
+          version: ${{ steps.version.outputs.version }}
+          args: ${{ inputs.pack-args }}
+          enable-windows-targeting: ${{ inputs.enable-windows-targeting }}
+
+      - name: Upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.package-artifact-name }}
+          path: ${{ steps.pack.outputs.destination }}
+          retention-days: ${{ inputs.retention-days }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: pack
+    if: >-
+      inputs.publish && (needs.pack.outputs.is-tag == 'true' ||
+      (inputs.publish-prereleases && needs.pack.outputs.is-default-branch == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    concurrency:
+      group: nuget-publish-${{ github.repository }}
+      cancel-in-progress: false
+    outputs:
+      published: ${{ steps.push.outputs.published }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.package-artifact-name }}
+          path: dist-nuget
+
+      # Trusted publishing: a short-lived nuget.org key for this run, in place of a stored one.
+      - name: NuGet login
+        id: login
+        if: inputs.nuget-user != ''
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ inputs.nuget-user }}
+
+      - name: Push
+        id: push
+        uses: $/actions/nuget-push
+        with:
+          packages: dist-nuget/*.nupkg
+          source: ${{ inputs.nuget-source }}
+          api-key: ${{ steps.login.outputs.NUGET_API_KEY || secrets.NUGET_API_KEY || ((inputs.nuget-source == 'github' || contains(inputs.nuget-source, 'nuget.pkg.github.com')) && github.token || '') }}
+          skip-duplicate: ${{ inputs.skip-duplicate }}
+
+  post-publish:
+    name: Post-publish
+    needs: [pack, publish]
+    if: needs.publish.result == 'success' && inputs.post-publish != ''
+    runs-on: ${{ inputs.pack-os != '' && inputs.pack-os || fromJSON(inputs.os)[0] }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: ${{ inputs.submodules }}
+          persist-credentials: false
+
+      - name: .NET
+        if: inputs.dotnet-version != '' || (inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '')
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+          global-json-file: ${{ inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '' && inputs.global-json-file || '' }}
+
+      - name: Feeds
+        if: inputs.nuget-sources != ''
+        uses: $/actions/nuget-feed
+        with:
+          sources: ${{ inputs.nuget-sources }}
+
+      - name: Post-publish
+        uses: $/actions/run-scripts
+        env:
+          PACKAGE_VERSION: ${{ needs.pack.outputs.version }}
+          NUGET_FEED_TOKEN: ${{ secrets.NUGET_FEED_TOKEN || github.token }}
+        with:
+          scripts: ${{ inputs.post-publish }}
+
+  release:
+    name: GitHub release
+    needs: [pack, publish]
+    if: >-
+      !cancelled() && inputs.github-release && needs.pack.result == 'success' &&
+      needs.pack.outputs.is-tag == 'true' && contains(fromJSON('["success", "skipped"]'), needs.publish.result)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      url: ${{ steps.release.outputs.url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.package-artifact-name }}
+          path: dist-nuget
+
+      - name: Release
+        id: release
+        uses: $/actions/github-release
+        with:
+          files: dist-nuget/*.nupkg
+          changelog: ${{ inputs.changelog }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+
+  result:
+    name: Result
+    needs: [test, pack, publish, post-publish, release]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - uses: $/actions/needs-gate
+        with:
+          needs: ${{ toJSON(needs) }}

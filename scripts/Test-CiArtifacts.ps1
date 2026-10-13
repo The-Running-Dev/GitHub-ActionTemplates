@@ -1,14 +1,15 @@
 #Requires -Version 7.4
 <#
 .SYNOPSIS
-Self-test: checks the node-ci, pwsh-ci and npm-package artifacts. Each test run uploaded readable
-results with every test passing and a coverage report, and the npm package was packed with a
-computed prerelease version.
+Self-test: checks the node-ci, pwsh-ci, dotnet and npm-package artifacts. Each test run uploaded
+readable results with every test passing and a coverage report, and the npm and NuGet packages
+were packed with a computed prerelease version.
 #>
 [CmdletBinding()]
 param(
     [string] $ArtifactPath = 'artifacts',
-    [switch] $ExpectPackage
+    [switch] $ExpectPackage,
+    [switch] $ExpectNuGetPackage
 )
 
 $ErrorActionPreference = 'Stop'
@@ -27,13 +28,16 @@ function Test-Check([string] $Name, [scriptblock] $Check) {
     }
 }
 
-function Test-Run([string] $Prefix, [string] $Results, [string] $Coverage, [int] $Expected) {
+function Test-Run([string] $Prefix, [string] $Results, [string] $Coverage, [int] $Expected, [int] $Tests) {
     $runs = @(Get-ChildItem -LiteralPath $artifacts -Directory -Filter "$Prefix-*")
     if ($runs.Count -ne $Expected) { $failures.Add($Prefix); Write-Host "FAIL $Prefix expected $Expected artifacts, found $($runs.Count)."; return }
     foreach ($run in $runs) {
         Test-Check "$($run.Name) results" {
-            $result = Get-TestResult (Join-Path $run.FullName $Results)
+            $files = @(Get-ChildItem -Path (Join-Path $run.FullName $Results) -File)
+            if ($files.Count -ne 1) { throw "Expected one results file, found $($files.Count)." }
+            $result = Get-TestResult $files[0].FullName
             if (-not $result.Total -or $result.Failed) { throw "$($result.Total) tests, $($result.Failed) failed." }
+            if ($Tests -and $result.Total -ne $Tests) { throw "Expected $Tests tests, found $($result.Total)." }
             "($($result.Format), $($result.Passed)/$($result.Total) passed)"
         }
         Test-Check "$($run.Name) coverage" {
@@ -46,6 +50,8 @@ function Test-Run([string] $Prefix, [string] $Results, [string] $Coverage, [int]
 
 Test-Run 'ci-node' 'test-results/junit.xml' 'coverage/lcov.info' 2
 Test-Run 'ci-pester' 'test-results/pester.xml' 'coverage/pester-coverage.xml' 2
+# The test filter leaves out the fixture's slow test.
+Test-Run 'ci-dotnet' '*.trx' 'coverage.cobertura.xml' 2 3
 
 if ($ExpectPackage) {
     Test-Check 'ci-npm-package' {
@@ -59,5 +65,15 @@ if ($ExpectPackage) {
     }
 }
 else { Write-Host 'skip ci-npm-package (not built on tags)' }
+
+if ($ExpectNuGetPackage) {
+    Test-Check 'ci-nupkg' {
+        $packages = @(Get-ChildItem -LiteralPath (Join-Path $artifacts 'ci-nupkg') -Filter '*.nupkg')
+        if ($packages.Count -ne 1) { throw "Expected one package, found $($packages.Count)." }
+        if ($packages[0].Name -notmatch '^Fixture\.Calculator\.1\.4\.2-(ci|pr)\.[0-9A-Za-z.-]+\.nupkg$') { throw "'$($packages[0].Name)' is not a 1.4.2 prerelease of Fixture.Calculator." }
+        "($($packages[0].Name))"
+    }
+}
+else { Write-Host 'skip ci-nupkg (not packed on tags)' }
 
 if ($failures.Count) { throw "$($failures.Count) check(s) failed: $($failures -join ', ')." }

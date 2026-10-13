@@ -63,3 +63,8 @@ junit.xml
 
 # Docusaurus
 .docusaurus/
+
+# .NET build output
+bin/
+obj/
+TestResults/

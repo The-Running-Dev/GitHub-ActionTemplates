@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Fixture.Calculator/Fixture.Calculator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fixture.Calculator.Tests/Fixture.Calculator.Tests.csproj" />
+  </Folder>
+</Solution>

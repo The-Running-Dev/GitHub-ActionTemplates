@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>Fixture.Calculator</PackageId>
+    <Authors>The-Running-Dev</Authors>
+    <Description>Fixture package for the dotnet.yml self-test. Never published.</Description>
+  </PropertyGroup>
+</Project>

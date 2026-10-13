@@ -19,6 +19,45 @@ foreach ($value in $label, $prLabel) {
 
 $context = Get-ActionContext
 
+function Get-GitVersion([string] $Path, [string] $ToolVersion) {
+    if ($ToolVersion -notmatch '^\d+\.\d+\.\d+$') { throw "The gitversion-version must be Major.Minor.Patch; got '$ToolVersion'." }
+
+    $shallow = git -C $Path rev-parse --is-shallow-repository
+    if ($LASTEXITCODE -ne 0) { throw "'$Path' is not a git checkout." }
+    if ($shallow -eq 'true') { throw 'GitVersion needs the full history. Check out with fetch-depth 0.' }
+
+    # A dotnet-gitversion on PATH wins, then the repository's tool manifest, then a pinned install.
+    $toolManifest = Join-Path $Path '.config' 'dotnet-tools.json'
+    if (Get-Command dotnet-gitversion -ErrorAction SilentlyContinue) {
+        $output = dotnet-gitversion $Path /output json
+    }
+    elseif ((Test-Path -LiteralPath $toolManifest) -and (Get-Content -Raw -LiteralPath $toolManifest) -match '"gitversion\.tool"') {
+        Push-Location -LiteralPath $Path
+        try {
+            dotnet tool restore | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw 'dotnet tool restore failed.' }
+            $output = dotnet tool run dotnet-gitversion /output json
+        }
+        finally { Pop-Location }
+    }
+    else {
+        $temp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetTempPath() }
+        $toolPath = Join-Path $temp "gitversion-$ToolVersion"
+        $tool = Join-Path $toolPath 'dotnet-gitversion'
+        if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+            Write-Host "Installing GitVersion.Tool $ToolVersion"
+            dotnet tool install GitVersion.Tool --version $ToolVersion --tool-path $toolPath | Out-Host
+            if ($LASTEXITCODE -ne 0) { throw "Installing GitVersion.Tool $ToolVersion failed." }
+        }
+        $output = & $tool $Path /output json
+    }
+    if ($LASTEXITCODE -ne 0) { throw "GitVersion failed with exit code $LASTEXITCODE`n$($output -join "`n")" }
+
+    $semVer = (($output -join "`n") | ConvertFrom-Json).SemVer
+    if (-not $semVer) { throw "GitVersion did not return a SemVer.`n$($output -join "`n")" }
+    return $semVer
+}
+
 $tagVersion = $null
 if ($context.IsTag) {
     if (-not $context.RefName.StartsWith($prefix)) {
@@ -73,8 +112,19 @@ switch ($strategy) {
         }
         $suffix = if ($context.IsPullRequest) { "$prLabel.$($context.PullRequestNumber)" } else { $label }
     }
+    'gitversion' {
+        $semVer = Get-GitVersion -Path $workingDirectory -ToolVersion (Get-ActionInput 'gitversion-version' '6.8.2')
+        $base = ConvertTo-SemVer $semVer
+        $source = "GitVersion ($semVer)"
+
+        if ($tagVersion -and (Format-SemVer $tagVersion) -ne (Format-SemVer $base)) {
+            throw "Tag '$($context.RefName)' does not match version '$(Format-SemVer $base)' from GitVersion."
+        }
+        # GitVersion already labels builds that are not releases, so its version is used as it is.
+        $stable = $true
+    }
     default {
-        throw "Unknown strategy '$strategy'. Use tag, manifest, or run-number."
+        throw "Unknown strategy '$strategy'. Use tag, manifest, run-number, or gitversion."
     }
 }
 

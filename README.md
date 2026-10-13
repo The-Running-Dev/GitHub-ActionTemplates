@@ -18,6 +18,7 @@ in every repository.
 | [`pwsh-ci.yml`](docs/pwsh-ci.md) | Syntax-checks PowerShell files, optionally runs PSScriptAnalyzer, and runs Pester with coverage on each OS. |
 | [`npm-package.yml`](docs/npm-package.md) | Tests and packs an npm package, publishes it from tags (npmjs or GitHub Packages) and creates the GitHub release. |
 | [`container.yml`](docs/container.md) | Builds and smoke-tests an image, pushes the tested image from the branch tip and tags, and can redeploy through a webhook. |
+| [`dotnet.yml`](docs/dotnet.md) | Builds and tests a .NET solution on each OS with coverage, packs NuGet packages and publishes them from tags (GitHub Packages or nuget.org). |
 
 ```yaml
 jobs:
@@ -32,7 +33,7 @@ Complete caller workflows are in [examples/](examples).
 
 | Action | What it does |
 |---|---|
-| [`version`](actions/version/README.md) | Computes a semantic version from git tags, a manifest file, or the run number. |
+| [`version`](actions/version/README.md) | Computes a semantic version from git tags, a manifest file, the run number, or GitVersion. |
 | [`assert-tag-version`](actions/assert-tag-version/README.md) | Fails a tag build when the tag and the manifest version differ. |
 | [`context`](actions/context/README.md) | Normalises the run context: branch, slug, PR, tag, publish decision, image name. |
 | [`debug`](actions/debug/README.md) | Prints the run context, runner, tool versions, disk space and workspace. |
@@ -56,6 +57,10 @@ Complete caller workflows are in [examples/](examples).
 | [`branch-tip-gate`](actions/branch-tip-gate/README.md) | Holds back a branch build that is no longer the branch head, so an older run cannot overwrite `latest`. |
 | [`image-push`](actions/image-push/README.md) | Pushes every tag of a local image, reports the digest and optionally signs it with cosign. |
 | [`webhook-deploy`](actions/webhook-deploy/README.md) | Calls a redeploy webhook with retries, then waits until a health URL serves the new build. |
+| [`nuget-feed`](actions/nuget-feed/README.md) | Adds private NuGet feeds and their credentials to the NuGet config, with the token read from the environment. |
+| [`dotnet-test`](actions/dotnet-test/README.md) | Restores, builds and tests a .NET solution, with TRX results and merged coverlet coverage. |
+| [`dotnet-pack`](actions/dotnet-pack/README.md) | Packs a .NET solution into NuGet packages with a computed version, in a deterministic CI build. |
+| [`nuget-push`](actions/nuget-push/README.md) | Pushes NuGet packages to GitHub Packages, nuget.org or another feed, skipping versions already there. |
 
 The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners
 (`docs-build` with the `template` builder runs in the build-agent container).
@@ -122,6 +127,7 @@ public issue.
 - [docs/node-ci.md](docs/node-ci.md), [docs/pwsh-ci.md](docs/pwsh-ci.md),
   [docs/npm-package.md](docs/npm-package.md): the Node, PowerShell and npm package workflows.
 - [docs/container.md](docs/container.md): the container image workflow.
+- [docs/dotnet.md](docs/dotnet.md): the .NET workflow.
 - [docs/conventions.md](docs/conventions.md): event semantics, version strategies, naming and
   security rules shared by every template.
 - [docs/PLAN.md](docs/PLAN.md): the roadmap.
