@@ -452,7 +452,8 @@ Describe 'run-scripts' {
     It 'stops at a script that <Name>' -ForEach @(
         @{ Name = 'throws'; Body = 'throw "broken"' }
         @{ Name = 'exits non-zero'; Body = 'exit 3' }
-        @{ Name = 'runs a failing native command before a passing one'; Body = "pwsh -NoProfile -Command 'exit 4'`npwsh -NoProfile -Command 'exit 0'" }
+        @{ Name = 'has a failing cmdlet before a passing one'; Body = "Get-Item -LiteralPath missing.txt`n'still running'" }
+        @{ Name = 'ends with a failing native command'; Body = "pwsh -NoProfile -Command 'exit 0'`npwsh -NoProfile -Command 'exit 4'" }
     ) {
         $workspace = New-ScriptWorkspace @{ 'bad.ps1' = $Body; 'after.ps1' = '' }
 
@@ -460,6 +461,24 @@ Describe 'run-scripts' {
 
         $result.ExitCode | Should -Not -Be 0
         Get-Ran $workspace | Should -Be @('bad.ps1')
+    }
+
+    It 'runs a script with Stop for cmdlets but not native commands, so it can check a failing native command itself' {
+        $workspace = New-ScriptWorkspace @{
+            'check.ps1' = @'
+Set-Content -LiteralPath preferences.txt -Value "$ErrorActionPreference $PSNativeCommandUseErrorActionPreference"
+pwsh -NoProfile -Command 'exit 1'
+if ($LASTEXITCODE -ne 1) { throw "Expected exit code 1, got $LASTEXITCODE." }
+exit 0
+'@
+            'after.ps1' = ''
+        }
+
+        $result = Invoke-RunScript $workspace "build/check.ps1`nbuild/after.ps1"
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        Get-Ran $workspace | Should -Be @('check.ps1', 'after.ps1')
+        Get-Content -LiteralPath (Join-Path $workspace 'preferences.txt') | Should -Be 'Stop False'
     }
 
     It 'checks every path before running any script' {

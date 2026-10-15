@@ -32,7 +32,12 @@ try {
         Write-Host "::group::$name"
         try {
             $global:LASTEXITCODE = 0
-            & $path
+            # The script keeps the runner's Stop for cmdlet errors, but a failing native command
+            # only sets $LASTEXITCODE (PowerShell's default), so the script can check it itself.
+            & {
+                $PSNativeCommandUseErrorActionPreference = $false
+                & $args[0]
+            } $path
             # A native script that fails sets $LASTEXITCODE without throwing.
             if ($LASTEXITCODE -ne 0) { throw "$name exited with code $LASTEXITCODE." }
         }
