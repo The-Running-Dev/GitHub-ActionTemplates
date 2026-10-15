@@ -11,6 +11,14 @@ section for its version.
   `contents: read` and `packages: read`. GitHub checks the publish and release jobs' permissions
   before it starts the run, so such a caller fails with `startup_failure`; every caller grants
   `contents: write`, `packages: write` and `id-token: write`.
+- `run-scripts` runs `.ps1` scripts with PowerShell's default `$ErrorActionPreference` and
+  `$PSNativeCommandUseErrorActionPreference` instead of leaking its own `Stop`/`$true`, so a
+  script that checks `$LASTEXITCODE` after a native command expected to fail (such as
+  `git merge-base --is-ancestor`) no longer gets a `NativeCommandExitException`. This affects
+  `pre-build`/`post-build` and the other script inputs of the reusable workflows. A script still
+  fails the step by throwing, by a non-zero `exit` or by finishing with a non-zero `$LASTEXITCODE`;
+  a script that relied on a failing native command mid-script to stop it now sets those
+  preferences itself.
 
 ## [0.7.0] - 2026-10-13
 

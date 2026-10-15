@@ -98,8 +98,9 @@ The build job runs, in order, only the steps whose inputs are set:
 
 `pre-build` and `post-build` take script paths, not commands: a step that needs logic of its
 own lives in a script in the calling repository, and the workflow YAML stays free of script
-code. `.ps1` scripts run in PowerShell and fail the build by throwing, by a non-zero `exit` or
-by a failing native command; other files must be executable. Paths are checked before the
+code. `.ps1` scripts run in PowerShell with its default preferences and fail the build by
+throwing, by a non-zero `exit` or by finishing with a non-zero `$LASTEXITCODE`; other files must
+be executable. Paths are checked before the
 first script runs.
 
 ## Examples
