@@ -452,6 +452,7 @@ Describe 'run-scripts' {
     It 'stops at a script that <Name>' -ForEach @(
         @{ Name = 'throws'; Body = 'throw "broken"' }
         @{ Name = 'exits non-zero'; Body = 'exit 3' }
+        @{ Name = 'has a failing cmdlet before a passing one'; Body = "Get-Item -LiteralPath missing.txt`n'still running'" }
         @{ Name = 'ends with a failing native command'; Body = "pwsh -NoProfile -Command 'exit 0'`npwsh -NoProfile -Command 'exit 4'" }
     ) {
         $workspace = New-ScriptWorkspace @{ 'bad.ps1' = $Body; 'after.ps1' = '' }
@@ -462,7 +463,7 @@ Describe 'run-scripts' {
         Get-Ran $workspace | Should -Be @('bad.ps1')
     }
 
-    It 'runs a script with the default preferences, so it can check a failing native command itself' {
+    It 'runs a script with Stop for cmdlets but not native commands, so it can check a failing native command itself' {
         $workspace = New-ScriptWorkspace @{
             'check.ps1' = @'
 Set-Content -LiteralPath preferences.txt -Value "$ErrorActionPreference $PSNativeCommandUseErrorActionPreference"
@@ -477,7 +478,7 @@ exit 0
 
         $result.ExitCode | Should -Be 0 -Because $result.Log
         Get-Ran $workspace | Should -Be @('check.ps1', 'after.ps1')
-        Get-Content -LiteralPath (Join-Path $workspace 'preferences.txt') | Should -Be 'Continue False'
+        Get-Content -LiteralPath (Join-Path $workspace 'preferences.txt') | Should -Be 'Stop False'
     }
 
     It 'checks every path before running any script' {

@@ -32,10 +32,9 @@ try {
         Write-Host "::group::$name"
         try {
             $global:LASTEXITCODE = 0
-            # The script runs in a scope with PowerShell's default preferences, not the runner's
-            # Stop ones, so it can check $LASTEXITCODE after a native command expected to fail.
+            # The script keeps the runner's Stop for cmdlet errors, but a failing native command
+            # only sets $LASTEXITCODE (PowerShell's default), so the script can check it itself.
             & {
-                $ErrorActionPreference = 'Continue'
                 $PSNativeCommandUseErrorActionPreference = $false
                 & $args[0]
             } $path

@@ -13,12 +13,13 @@ runs its `pre-build` and `post-build` inputs through this action.
       ./build/Test-SliceStatusMarkers.ps1
 ```
 
-- `.ps1` files run in the step's PowerShell with PowerShell's default preferences
-  (`$ErrorActionPreference = 'Continue'`, `$PSNativeCommandUseErrorActionPreference = $false`),
-  so a script can check `$LASTEXITCODE` after a native command that is expected to fail. A
-  script that wants every failing native command to stop it sets those preferences itself.
+- `.ps1` files run in the step's PowerShell with `$ErrorActionPreference = 'Stop'`, so a failing
+  cmdlet stops the script, and `$PSNativeCommandUseErrorActionPreference = $false` (PowerShell's
+  default), so a script can check `$LASTEXITCODE` after a native command that is expected to
+  fail. A script that wants every failing native command to stop it sets
+  `$PSNativeCommandUseErrorActionPreference = $true` itself.
 - Any other file runs directly and must be executable (`chmod +x`, with a shebang).
-- A script fails the step by throwing, by `exit` with a non-zero code, or by finishing with a
+- A script fails the step by throwing (a failing cmdlet throws), by `exit` with a non-zero code, or by finishing with a
   non-zero `$LASTEXITCODE` (its last native command failed).
 - Every path is checked before the first script runs. Paths must be inside the workspace.
 
