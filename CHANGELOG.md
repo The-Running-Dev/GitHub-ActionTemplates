@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-15
+
 ### Fixed
 - `docs/dotnet.md` and the `dotnet.yml` header said a caller that never packs needs only
   `contents: read` and `packages: read`. GitHub checks the publish and release jobs' permissions
