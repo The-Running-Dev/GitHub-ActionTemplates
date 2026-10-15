@@ -72,8 +72,9 @@ jobs:
 ```
 
 The caller grants every permission the workflow's jobs ask for, even on pull requests where only
-`Test` and `Pack` run: GitHub checks them before it runs any job. Without `pack`, `contents: read`
-and `packages: read` are enough.
+`Test` and `Pack` run, and even without `pack`: GitHub checks the permissions of every job,
+including the publish and release jobs that will be skipped, before it runs any job. A caller
+that grants less fails with `startup_failure`.
 
 Windows-only solutions (WPF, WinForms) set `os: '["windows-latest"]'`, or keep Linux runners with
 `enable-windows-targeting: true` when the tests do not need Windows.
