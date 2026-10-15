@@ -16,6 +16,13 @@ section for its version.
   `Result` job is the one check to require. See `docs/pages.md`.
 - `pages-env` action: exports the Pages address and build variables to the job.
 - `pages-check` action: checks the built site and adds the single-page-app fallback.
+- `drift-report` action: scans the repositories of an owner (or a list), finds the
+  `uses: <library>/...@<ref>` lines in their workflows and reports each ref as `current`,
+  `behind` (with the number of releases since), `unreleased`, `branch` or `unknown`, in the job
+  summary, as warnings and as a JSON report. It also lists the repositories with workflows that
+  do not use the library.
+- `drift.yml`: runs `drift-report` every Monday for `The-Running-Dev` and uploads the report.
+  Reads private repositories when the `DRIFT_TOKEN` secret is set.
 
 ## [0.7.1] - 2026-10-15
 

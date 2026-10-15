@@ -247,6 +247,13 @@ Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-loc
   earlier job (com), and `post-deploy` checks the live site.
 - Migration targets, each in its own pull request: Adventures.Content, Adventures,
   LandingPage, com.
+- The drift report is the `drift-report` action plus a weekly `drift.yml` in this repository, not
+  a reusable workflow: it reads every repository of the owner through the API (`DRIFT_TOKEN`
+  for private ones) and never checks one out. It reads workflow files on default branches only
+  and reports a ref as current when it resolves to the latest `vX.Y.Z` release's commit, so
+  `@v0` is current until `v1.0.0` ships. Its `unused` list tracks the repositories still to
+  migrate.
+
 ## Open questions
 
 1. ~~Default runner OS for `dotnet.yml`?~~ Resolved: `["ubuntu-latest"]`, as for every matrix
