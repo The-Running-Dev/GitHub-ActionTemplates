@@ -6,9 +6,9 @@ name: .NET
 # branch. A tag build can also create the GitHub release with the packages attached.
 #
 # Private feeds get credentials from `nuget-sources`, with the token in NUGET_FEED_TOKEN (the
-# secret, else `github.token`). The caller grants `contents: read` and `packages: read`; publishing
-# also needs `packages: write` and `id-token: write`, and a release `contents: write`.
-# See docs/dotnet.md.
+# secret, else `github.token`). The caller grants `contents: write`, `packages: write` and
+# `id-token: write` even when it never packs: GitHub checks the permissions of the publish and
+# release jobs before it starts the run, skipped or not. See docs/dotnet.md.
 
 on:
   workflow_call:

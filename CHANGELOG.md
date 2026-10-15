@@ -6,6 +6,12 @@ section for its version.
 
 ## [Unreleased]
 
+### Fixed
+- `docs/dotnet.md` and the `dotnet.yml` header said a caller that never packs needs only
+  `contents: read` and `packages: read`. GitHub checks the publish and release jobs' permissions
+  before it starts the run, so such a caller fails with `startup_failure`; every caller grants
+  `contents: write`, `packages: write` and `id-token: write`.
+
 ## [0.7.0] - 2026-10-13
 
 ### Added
