@@ -5,8 +5,7 @@ publishing projects. The goal is that a consuming repository's workflow is a few
 call a template, with every decision (version, publish or not, image name) made the same way
 in every repository.
 
-> **Status: 0.x.** The workflows and actions below are usable now. More reusable workflows
-> (.NET, static sites) arrive in later 0.x releases, see
+> **Status: 0.x.** The workflows and actions below are usable now; the remaining work is in
 > [docs/PLAN.md](docs/PLAN.md). Inputs may still change before `v1.0.0`.
 
 ## Workflows
@@ -14,6 +13,7 @@ in every repository.
 | Workflow | What it does |
 |---|---|
 | [`docs.yml`](docs/docs.md) | Builds a Docusaurus site and deploys it to GitHub Pages from the default branch and tags. |
+| [`pages.yml`](docs/pages.md) | Builds a static site or single-page app with Node and deploys it to GitHub Pages, with the base path and build variables set. |
 | [`node-ci.yml`](docs/node-ci.md) | Runs a Node project's scripts on an OS × Node matrix, with test report, coverage gate and clean-tree check. |
 | [`pwsh-ci.yml`](docs/pwsh-ci.md) | Syntax-checks PowerShell files, optionally runs PSScriptAnalyzer, and runs Pester with coverage on each OS. |
 | [`npm-package.yml`](docs/npm-package.md) | Tests and packs an npm package, publishes it from tags (npmjs or GitHub Packages) and creates the GitHub release. |
@@ -61,6 +61,8 @@ Complete caller workflows are in [examples/](examples).
 | [`dotnet-test`](actions/dotnet-test/README.md) | Restores, builds and tests a .NET solution, with TRX results and merged coverlet coverage. |
 | [`dotnet-pack`](actions/dotnet-pack/README.md) | Packs a .NET solution into NuGet packages with a computed version, in a deterministic CI build. |
 | [`nuget-push`](actions/nuget-push/README.md) | Pushes NuGet packages to GitHub Packages, nuget.org or another feed, skipping versions already there. |
+| [`pages-env`](actions/pages-env/README.md) | Exports the Pages URL and base path, plus build variables (secret ones masked), to the rest of the job. |
+| [`pages-check`](actions/pages-check/README.md) | Checks a built site before the Pages upload and adds the single-page-app 404.html fallback. |
 
 The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners
 (`docs-build` with the `template` builder runs in the build-agent container).

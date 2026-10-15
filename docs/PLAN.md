@@ -95,7 +95,7 @@ Ordered by demand observed across the SubZeroDev repositories.
 | `pwsh-ci.yml` | Parse-check all `*.ps1`, Pester, optional coverage gate, test report | `pester-version`, `paths`, `minimum-coverage`, `os` | Data.Json, GameEngine, SkyNetHR, GameOfLife, Workspace, PSGenerator |
 | `dotnet.yml` | Setup SDK, feed auth, build, test (trx), coverage gate, pack, publish (GitHub Packages / nuget.org OIDC / API key), consume check | `solution`, `dotnet-version`, `os`, `pack`, `feed`, `minimum-coverage`, `version-strategy` | Platform, Licensing, Platform.Updater, Cleaner, HotCorners (CI only), WinGet (CI only) |
 | `npm-package.yml` | Tag ↔ `package.json` check, pack, publish with provenance to npmjs or GitHub Packages, GitHub Release | `registry`, `access`, `provenance`, `github-release` | Data.Json, Plugins.GitHub, GameEngine, **ServiceContract** (new) |
-| `pages.yml` | Static site / SPA build → Pages | `build-command`, `output`, `base-path` | Adventures.Content, Adventures, com, LandingPage |
+| `pages.yml` | Static site / SPA build with Node → Pages on default branch and tags | `scripts`, `output`, `base-path`, `spa`, `env` + `BUILD_ENV`, `artifact`, `post-deploy` | Adventures.Content, Adventures, com, LandingPage |
 | `claude-review.yml` | Claude Code PR review / `@claude` | `mode`, `model`, `skip-drafts`, `skip-bots`, `prompt` | 8 repos, 4 variants today |
 
 Event semantics are identical across archetypes:
@@ -231,6 +231,22 @@ Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-loc
 - Migration targets, each in its own pull request: Cleaner, HotCorners (CI), Platform.Updater,
   Licensing, Platform, then WinGet (CI).
 
+### Phase 6 decisions
+
+- `pages.yml` builds on a hosted runner with `actions/setup-node` and `node-scripts`, not the
+  build-agent container: the sites are plain Node projects, and `docs.yml` stays the Docusaurus
+  path.
+- `pages-env` reads the address from the Pages settings (custom domains included) and exports
+  `PAGES_URL`, `PAGES_ORIGIN` and `PAGES_BASE_PATH`; before Pages is set up it falls back to
+  the github.io address, so pull requests and forks build without `configure-pages` failing.
+- Build variables: `env` (`KEY=value` lines, for `vars`) and the `BUILD_ENV` secret (masked),
+  instead of one input per variable.
+- `spa: true` copies `index.html` to `404.html` for client-side routes.
+- The deploy job runs `branch-tip-gate` inside the `pages-deploy` concurrency group, so an older
+  run that waited never replaces a newer site; `artifact` deploys a tree built and tested by an
+  earlier job (com), and `post-deploy` checks the live site.
+- Migration targets, each in its own pull request: Adventures.Content, Adventures,
+  LandingPage, com.
 ## Open questions
 
 1. ~~Default runner OS for `dotnet.yml`?~~ Resolved: `["ubuntu-latest"]`, as for every matrix

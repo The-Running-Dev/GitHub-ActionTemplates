@@ -1,0 +1,49 @@
+name: Pages environment
+description: Export the GitHub Pages URL and base path, plus caller-provided build variables, to the rest of the job.
+author: The-Running-Dev
+
+inputs:
+  base-path:
+    description: Path the site is served under, e.g. `/my-site/`. Empty reads it from the repository's Pages settings, falling back to `/<repository>/` (or `/` for an `<owner>.github.io` repository).
+    required: false
+    default: ''
+  env:
+    description: Build variables as `KEY=value`, one per line, exported to the following steps.
+    required: false
+    default: ''
+  secret-env:
+    description: Like `env`, but each value is masked in the log first. Pass a secret here, not a literal.
+    required: false
+    default: ''
+  repository:
+    description: Repository as owner/name. Empty uses the run's repository.
+    required: false
+    default: ''
+  token:
+    description: Token that can read the repository's Pages settings (the `pages` read permission).
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  url:
+    description: Site URL with a trailing slash.
+    value: ${{ steps.env.outputs.url }}
+  origin:
+    description: Scheme and host of the site, without a trailing slash.
+    value: ${{ steps.env.outputs.origin }}
+  base-path:
+    description: Path the site is served under, with leading and trailing slashes.
+    value: ${{ steps.env.outputs.base-path }}
+
+runs:
+  using: composite
+  steps:
+    - id: env
+      shell: pwsh
+      env:
+        INPUT_BASE_PATH: ${{ inputs.base-path }}
+        INPUT_ENV: ${{ inputs.env }}
+        INPUT_SECRET_ENV: ${{ inputs.secret-env }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH pages-env.ps1)'

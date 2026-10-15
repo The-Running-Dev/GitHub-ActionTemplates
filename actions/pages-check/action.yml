@@ -1,0 +1,38 @@
+name: Pages check
+description: Check a built static site before it is uploaded to GitHub Pages, and add a 404.html fallback for single-page apps.
+author: The-Running-Dev
+
+inputs:
+  path:
+    description: Built site folder, relative to `working-directory`.
+    required: true
+  working-directory:
+    description: Folder `path` is relative to, from the workspace. Empty uses the workspace root.
+    required: false
+    default: ''
+  spa:
+    description: '`true` copies index.html to 404.html (unless the site has one) so deep links load the app.'
+    required: false
+    default: 'false'
+
+outputs:
+  path:
+    description: Built site folder, relative to the workspace.
+    value: ${{ steps.check.outputs.path }}
+  files:
+    description: Number of files in the site.
+    value: ${{ steps.check.outputs.files }}
+  size:
+    description: Size of the site in bytes.
+    value: ${{ steps.check.outputs.size }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: pwsh
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_SPA: ${{ inputs.spa }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH pages-check.ps1)'

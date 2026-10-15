@@ -6,6 +6,17 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `pages.yml` reusable workflow: builds a static site or single-page app with Node on a hosted
+  runner and deploys it to GitHub Pages from the default branch and tags, skipping a commit that
+  is no longer the branch head. The build gets `PAGES_URL`, `PAGES_ORIGIN` and
+  `PAGES_BASE_PATH` from the Pages settings (or `base-path`), build variables from `env` and the
+  masked `BUILD_ENV` secret, and `spa: true` adds the 404.html fallback. It can deploy a tree
+  built by an earlier job (`artifact`) and run `post-deploy` scripts with the site address. A
+  `Result` job is the one check to require. See `docs/pages.md`.
+- `pages-env` action: exports the Pages address and build variables to the job.
+- `pages-check` action: checks the built site and adds the single-page-app fallback.
+
 ## [0.7.1] - 2026-10-15
 
 ### Fixed
