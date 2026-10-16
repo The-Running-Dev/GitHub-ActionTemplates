@@ -21,6 +21,8 @@ or a throwing `BeforeAll`), and when no tests ran at all.
 
 - The Pester version is installed from the PowerShell Gallery unless it is already installed,
   then imported so the run cannot pick up another version on the runner.
+- Tests run with `$PSNativeCommandUseErrorActionPreference = $false` (PowerShell's default), so a
+  test can run a native command that is expected to fail and check `$LASTEXITCODE`.
 - Zero tests is a failure by default, so a wrong `path` or tag filter cannot pass silently.
   Set `allow-empty: true` for a repository that has no tests yet.
 - On GitHub Actions the output uses Pester's GitHub Actions format, which annotates failed tests.

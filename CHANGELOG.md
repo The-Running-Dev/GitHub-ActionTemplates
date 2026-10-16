@@ -6,6 +6,12 @@ section for its version.
 
 ## [Unreleased]
 
+### Fixed
+- `pester` runs the tests with `$PSNativeCommandUseErrorActionPreference = $false` (PowerShell's
+  default) instead of leaking its own `$true`, so a test that runs a native command expected to
+  fail (such as a child `pwsh` that exits 1) and checks `$LASTEXITCODE` no longer gets a
+  `NativeCommandExitException`. This affects `pwsh-ci.yml`.
+
 ## [0.8.1] - 2026-10-16
 
 ### Fixed

@@ -160,6 +160,23 @@ Describe 'pester' {
         Get-Flat $result.Log | Should -Match 'failed to run: tests/Broken\.Tests\.ps1'
     }
 
+    It 'lets a test check the exit code of a native command that fails' {
+        $workspace = New-ModuleWorkspace
+        Set-File (Join-Path $workspace 'tests/Native.Tests.ps1') @'
+Describe 'native' {
+    It 'sees the exit code' {
+        pwsh -NoProfile -Command 'exit 1'
+        $LASTEXITCODE | Should -Be 1
+    }
+}
+'@
+
+        $result = Invoke-Action 'pester' $workspace @{ INPUT_VERSION = $PesterVersion }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $result.Outputs['passed'] | Should -Be '4'
+    }
+
     It 'fails when no tests ran unless allow-empty is set' {
         $workspace = New-Workspace 'empty'
         New-Item -ItemType Directory -Path (Join-Path $workspace 'tests') | Out-Null
