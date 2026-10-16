@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-16
+
 ### Fixed
 - `pages.yml`: `post-deploy` scripts now get Node (`node-version`), the `artifact` and the
   submodules, as the build does, so a read-back check written in Node can run and compare the
