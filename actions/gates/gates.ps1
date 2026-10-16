@@ -154,7 +154,21 @@ function Get-JobAt($JobLines, [int] $Index) {
     return $job
 }
 
-function Get-MarkedGate([string] $Workflow, [string[]] $Lines, $JobLines) {
+# The step's own working-directory wins, then the job's defaults.run, then the workflow's.
+function Get-StepFolder($Step, $Document, [string] $Job) {
+    $folder = Get-Value $Step 'working-directory'
+    if ($folder) { return $folder }
+    $jobs = if ($Document -and $Document.Contains('jobs')) { $Document['jobs'] } else { $null }
+    foreach ($scope in @($(if ($jobs -and $jobs.Contains($Job)) { $jobs[$Job] }), $Document)) {
+        $defaults = if ($scope -and $scope.Contains('defaults')) { $scope['defaults'] } else { $null }
+        $run = if ($defaults -and $defaults.Contains('run')) { $defaults['run'] } else { $null }
+        $folder = Get-Value $run 'working-directory'
+        if ($folder) { return $folder }
+    }
+    return ''
+}
+
+function Get-MarkedGate([string] $Workflow, [string[]] $Lines, $JobLines, $Document) {
     for ($i = 0; $i -lt $Lines.Count; $i++) {
         if ($Lines[$i] -notmatch '^\s*#\s*verification:\s*true\s*$') { continue }
         $start = $i + 1
@@ -173,7 +187,7 @@ function Get-MarkedGate([string] $Workflow, [string[]] $Lines, $JobLines) {
         if (-not $run) { throw "${Workflow}:$($start + 1): the step marked '# verification: true' has no 'run'." }
         $name = Get-Value $step 'name' ($run -split "`n")[0]
         $job = Get-JobAt $JobLines $start
-        [pscustomobject]@{ Line = $start; Gates = @(New-Gate $job $name (Join-Location (Get-Value $step 'working-directory') $run)) }
+        [pscustomobject]@{ Line = $start; Gates = @(New-Gate $job $name (Join-Location (Get-StepFolder $step $Document $job) $run)) }
     }
 }
 
@@ -206,7 +220,7 @@ $found = foreach ($workflowFile in Get-ChildItem -LiteralPath $workflowFolder -F
     $lines = $text -split '\r?\n'
     $document = ConvertFrom-Yaml $text -Ordered
     $jobLines = Get-JobLine $lines
-    @(Get-LibraryGate $relative $jobLines $document) + @(Get-MarkedGate $relative $lines $jobLines) | Sort-Object Line
+    @(Get-LibraryGate $relative $jobLines $document) + @(Get-MarkedGate $relative $lines $jobLines $document) | Sort-Object Line
 }
 $expected = @($found | ForEach-Object Gates)
 if (-not $expected) { throw "No gates found in '$workflows': no job calls node-ci, pwsh-ci, npm-package or dotnet, and no step is marked '# verification: true'." }
