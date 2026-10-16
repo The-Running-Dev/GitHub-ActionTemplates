@@ -137,7 +137,15 @@ Event semantics are identical across archetypes:
 | 6 | Consolidate | `pages.yml`; drift report (repo → pinned ref); `v1.0.0` | All SubZeroDev repos on `@v1`; `v1.0.0` tagged |
 | 7 | Optional extensions | Environment promotion list with approvals; cloud deploys via OIDC (Azure Web App / Functions, etc.); secret-to-config token replacement | On demand |
 
-Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-local.
+Not templated, so these stay repo-local:
+
+- HotCorners Velopack release and WinGet Nuke release.
+- SubZeroDev.Platform.UI.Portfolio `deploy-pages.yml`: it is Portfolio's own published reusable workflow,
+  with the root `action.yml`, that other repositories call. It is not a consumer of `pages.yml`.
+- subzerodev-s21-proof `ci.yml`: a throwaway S21 proof fixture whose `check` job only exits 0,
+  to satisfy its ruleset's required check.
+
+The drift report lists these repositories as `unused`, and that is expected.
 
 ### Phase 3 decisions
 
