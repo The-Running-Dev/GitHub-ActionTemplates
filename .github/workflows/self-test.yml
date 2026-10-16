@@ -121,9 +121,25 @@ jobs:
       deploy: false
       artifact-name: docs-node
 
+  pages:
+    name: Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: $/.github/workflows/pages.yml
+    with:
+      working-directory: tests/fixtures/pages-app
+      env: PAGES_FIXTURE_VALUE=from-env
+      base-path: /self-test/
+      spa: true
+      deploy: false
+      artifact-name: pages-app
+
+  # Checks the docs.yml and pages.yml sites; the name predates pages.yml.
   docs-check:
     name: Docs artifacts
-    needs: [docs-template, docs-node]
+    needs: [docs-template, docs-node, pages]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -137,9 +153,14 @@ jobs:
           pattern: docs-*
           path: artifacts
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: pages-app
+          path: artifacts/pages-app
+
       - name: Check the sites
         shell: pwsh
-        run: ./scripts/Test-DocsArtifacts.ps1
+        run: ./scripts/Test-SiteArtifacts.ps1
 
   node-ci:
     name: Node CI

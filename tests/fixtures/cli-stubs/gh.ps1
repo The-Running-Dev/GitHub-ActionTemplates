@@ -1,7 +1,7 @@
-# Stands in for the GitHub CLI in the github-release and branch-tip-gate tests. Appends each call's
+# Stands in for the GitHub CLI in the github-release, branch-tip-gate and pages-env tests. Appends each call's
 # arguments (and the notes file's text) to $env:STUB_LOG/gh.txt. `release view` succeeds only when
 # STUB_RELEASE_EXISTS is 'true', or after this stub "created" the release. `api repos/<owner>/<name>/branches/<branch>`
-# prints STUB_BRANCH_HEAD.
+# prints STUB_BRANCH_HEAD, and `api repos/<owner>/<name>/pages` prints STUB_PAGES_URL (a 404 when it is empty).
 $log = Join-Path $env:STUB_LOG 'gh.txt'
 $created = Join-Path $env:STUB_LOG 'created'
 Add-Content -LiteralPath $log -Value ($args -join ' ')
@@ -17,6 +17,14 @@ if ($args[0] -eq 'release' -and $args[1] -eq 'view') {
 if ($args[0] -eq 'api' -and $args[1] -match '^repos/[^/]+/[^/]+/branches/') {
     if (-not $env:STUB_BRANCH_HEAD) { exit 1 }
     Write-Output $env:STUB_BRANCH_HEAD
+    exit 0
+}
+if ($args[0] -eq 'api' -and $args[1] -match '^repos/[^/]+/[^/]+/pages$') {
+    if (-not $env:STUB_PAGES_URL) {
+        [Console]::Error.WriteLine('gh: Not Found (HTTP 404)')
+        exit 1
+    }
+    Write-Output $env:STUB_PAGES_URL
     exit 0
 }
 if ($args[0] -eq 'release' -and $args[1] -eq 'create') { Set-Content -LiteralPath $created -Value '' }

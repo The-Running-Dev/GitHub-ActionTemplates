@@ -1,0 +1,15 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+jobs:
+  pages:
+    permissions: { contents: read, pages: write, id-token: write }
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v0
+    with:
+      spa: true
