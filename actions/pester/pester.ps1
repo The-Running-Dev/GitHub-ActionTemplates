@@ -69,7 +69,14 @@ $testFiles = @($testPaths | ForEach-Object {
         if (Test-Path -LiteralPath $_ -PathType Leaf) { $_ }
         else { Get-ChildItem -LiteralPath $_ -Recurse -File -Filter '*.Tests.ps1' }
     })
-$run = if ($testFiles) { Invoke-Pester -Configuration $configuration }
+# The tests run in this process, so they get PowerShell's default for native commands: a test
+# can assert on the exit code of a command that is expected to fail.
+$run = if ($testFiles) {
+    & {
+        $PSNativeCommandUseErrorActionPreference = $false
+        Invoke-Pester -Configuration $args[0]
+    } $configuration
+}
 if (-not $run) { $run = [pscustomobject]@{ TotalCount = 0; PassedCount = 0; FailedCount = 0; SkippedCount = 0; CodeCoverage = $null; Containers = @() } }
 
 $covered = ''
