@@ -1,0 +1,62 @@
+name: Drift report
+description: Lists the repositories whose workflows use this library and the ref each one pins, and how far each is behind the latest release.
+author: The-Running-Dev
+
+inputs:
+  owner:
+    description: User or organisation whose repositories are scanned. Empty uses the owner of the run's repository.
+    required: false
+    default: ''
+  repositories:
+    description: Repositories to scan as owner/name, one per line, instead of every repository of `owner`.
+    required: false
+    default: ''
+  library:
+    description: Library repository as owner/name. Empty uses the repository this action comes from.
+    required: false
+    default: ''
+  token:
+    description: >-
+      Token that can read the repositories and their contents. `github.token` only reads public
+      repositories of other owners and its own repository.
+    required: false
+    default: ${{ github.token }}
+  fail-on-drift:
+    description: '`true` fails the step when a repository is not on the latest release.'
+    required: false
+    default: 'false'
+  report:
+    description: Path of a JSON file to write the report to, relative to the workspace. Empty writes none.
+    required: false
+    default: ''
+
+outputs:
+  latest:
+    description: Latest release of the library, e.g. `v1.2.0`.
+    value: ${{ steps.drift.outputs.latest }}
+  repositories:
+    description: Number of repositories scanned.
+    value: ${{ steps.drift.outputs.repositories }}
+  references:
+    description: Number of workflow references to the library found.
+    value: ${{ steps.drift.outputs.references }}
+  current:
+    description: Number of references on the latest release.
+    value: ${{ steps.drift.outputs.current }}
+  drifted:
+    description: Number of references that are not on the latest release.
+    value: ${{ steps.drift.outputs.drifted }}
+
+runs:
+  using: composite
+  steps:
+    - id: drift
+      shell: pwsh
+      env:
+        INPUT_OWNER: ${{ inputs.owner }}
+        INPUT_REPOSITORIES: ${{ inputs.repositories }}
+        INPUT_LIBRARY: ${{ inputs.library }}
+        INPUT_FAIL_ON_DRIFT: ${{ inputs.fail-on-drift }}
+        INPUT_REPORT: ${{ inputs.report }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH drift-report.ps1)'

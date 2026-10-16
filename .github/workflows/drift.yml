@@ -1,0 +1,35 @@
+name: Drift
+
+# Weekly report of the ref each repository of the owner pins this library at. Set the DRIFT_TOKEN
+# secret to a token that can read private repositories; github.token reads public ones only.
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: drift
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    name: Drift report
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      - name: Drift report
+        uses: $/actions/drift-report
+        with:
+          token: ${{ secrets.DRIFT_TOKEN || github.token }}
+          report: drift-report.json
+
+      - name: Upload the report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: drift-report
+          path: drift-report.json
+          retention-days: 30

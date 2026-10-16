@@ -63,6 +63,7 @@ Complete caller workflows are in [examples/](examples).
 | [`nuget-push`](actions/nuget-push/README.md) | Pushes NuGet packages to GitHub Packages, nuget.org or another feed, skipping versions already there. |
 | [`pages-env`](actions/pages-env/README.md) | Exports the Pages URL and base path, plus build variables (secret ones masked), to the rest of the job. |
 | [`pages-check`](actions/pages-check/README.md) | Checks a built site before the Pages upload and adds the single-page-app 404.html fallback. |
+| [`drift-report`](actions/drift-report/README.md) | Lists the repositories whose workflows use this library, the ref each pins and how far it is behind the latest release. |
 
 The actions are PowerShell 7 composite actions and run on Linux, Windows and macOS runners
 (`docs-build` with the `template` builder runs in the build-agent container).
@@ -108,6 +109,8 @@ changes go to the next major.
 Inside this repository, templates and actions refer to each other with the self-repository
 syntax (`uses: $/actions/x`), so the pieces you get always come from the commit you pinned.
 
+A weekly [drift report](docs/drift.md) lists the ref each repository of the owner pins.
+
 ## Security
 
 - Every workflow starts from `permissions: {}`; jobs ask only for what they need.
@@ -130,6 +133,7 @@ public issue.
   [docs/npm-package.md](docs/npm-package.md): the Node, PowerShell and npm package workflows.
 - [docs/container.md](docs/container.md): the container image workflow.
 - [docs/dotnet.md](docs/dotnet.md): the .NET workflow.
+- [docs/drift.md](docs/drift.md): the weekly report of the ref each repository pins.
 - [docs/conventions.md](docs/conventions.md): event semantics, version strategies, naming and
   security rules shared by every template.
 - [docs/PLAN.md](docs/PLAN.md): the roadmap.
