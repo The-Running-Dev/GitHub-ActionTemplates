@@ -65,7 +65,7 @@ export default defineConfig({ base: process.env.PAGES_BASE_PATH ?? '/' });
 | Name | Default | Description |
 |---|---|---|
 | `working-directory` | `.` | Node project folder, relative to the repository root. |
-| `node-version` | `lts/*` | Node version for `actions/setup-node`. |
+| `node-version` | `lts/*` | Node version for `actions/setup-node`, in the build and for `post-deploy` scripts. |
 | `package-manager` | from the lockfile | `npm`, `pnpm` or `yarn`. |
 | `setup` | | package.json scripts run with `npm run` before the install, for example one that vendors local packages. |
 | `scripts` | `build` | package.json scripts that build the site, in order. Empty skips Node, for a prebuilt `artifact`. |
@@ -77,11 +77,11 @@ export default defineConfig({ base: process.env.PAGES_BASE_PATH ?? '/' });
 | `spa` | `false` | Single-page app: copies `index.html` to `404.html` (unless the site has one) so deep links load the app. |
 | `pre-build` | | Repository scripts run from the repository root before the install, by path, one per line ([`run-scripts`](../actions/run-scripts/README.md)). |
 | `post-build` | | Repository scripts run from the repository root after the build, by path, one per line. |
-| `artifact` | | Artifact from an earlier job of the calling workflow, downloaded before the build. |
+| `artifact` | | Artifact from an earlier job of the calling workflow, downloaded before the build and again before `post-deploy`. |
 | `artifact-path` | `.` | Folder the `artifact` is downloaded into. |
 | `deploy` | `true` | `false` only builds and uploads the artifact. |
 | `require-tip` | `true` | Skip the deployment when the commit is no longer the branch head ([`branch-tip-gate`](../actions/branch-tip-gate/README.md)). |
-| `post-deploy` | | Repository scripts run after the deployment, by path, one per line, with the site address in `PAGES_URL`. |
+| `post-deploy` | | Repository scripts run after the deployment, by path, one per line, with the site address in `PAGES_URL`, Node and the downloaded `artifact`. |
 | `cache` | | `actions/setup-node` dependency cache, `npm`. Empty turns caching off. |
 | `cache-dependency-path` | | Lockfile(s) for the cache key, from the repository root. |
 | `runs-on` | `ubuntu-latest` | Runner for the build job. |
@@ -107,7 +107,8 @@ export default defineConfig({ base: process.env.PAGES_BASE_PATH ?? '/' });
 1. `Build`: checkout, the optional `artifact`, the Pages variables and `env`, then `pre-build`,
    the Node build, `post-build`, the site check and the upload.
 2. `Deploy` (default branch and tags, `deploy: true`): checks the commit is still the branch
-   head, deploys, then runs `post-deploy`. One deployment at a time per repository.
+   head, deploys, then sets up Node and the `artifact` and runs `post-deploy`. One deployment at a
+   time per repository.
 3. `Result`: the one check to require.
 
 ## Examples
