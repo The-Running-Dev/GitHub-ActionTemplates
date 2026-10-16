@@ -67,7 +67,7 @@ environment list in Phase 7).
 .github/
   workflows/
     docs.yml  pages.yml  node-ci.yml  npm-package.yml  pwsh-ci.yml
-    dotnet.yml  container.yml  claude-review.yml          # public entry points
+    dotnet.yml  container.yml                             # public entry points
     _build-*.yml  _publish-*.yml                          # internal
     self-test.yml   # runs every entry point against tests/fixtures
     lint.yml        # actionlint + zizmor
@@ -96,7 +96,6 @@ Ordered by demand observed across the SubZeroDev repositories.
 | `dotnet.yml` | Setup SDK, feed auth, build, test (trx), coverage gate, pack, publish (GitHub Packages / nuget.org OIDC / API key), consume check | `solution`, `dotnet-version`, `os`, `pack`, `feed`, `minimum-coverage`, `version-strategy` | Platform, Licensing, Platform.Updater, Cleaner, HotCorners (CI only), WinGet (CI only) |
 | `npm-package.yml` | Tag ↔ `package.json` check, pack, publish with provenance to npmjs or GitHub Packages, GitHub Release | `registry`, `access`, `provenance`, `github-release` | Data.Json, Plugins.GitHub, GameEngine, **ServiceContract** (new) |
 | `pages.yml` | Static site / SPA build with Node → Pages on default branch and tags | `scripts`, `output`, `base-path`, `spa`, `env` + `BUILD_ENV`, `artifact`, `post-deploy` | Adventures.Content, Adventures, com, LandingPage |
-| `claude-review.yml` | Claude Code PR review / `@claude` | `mode`, `model`, `skip-drafts`, `skip-bots`, `prompt` | 8 repos, 4 variants today |
 
 Event semantics are identical across archetypes:
 - `pull_request` → build + test only.
@@ -135,7 +134,7 @@ Event semantics are identical across archetypes:
 | 3 | Node + PowerShell | `node-ci.yml`, `pwsh-ci.yml`, `pwsh-check`, `coverage-gate`, `test-report`, `npm-package.yml`; give ServiceContract a pipeline | Node/pwsh repos migrated |
 | 4 | Containers | `container.yml`, `image-meta`, `image-gate`, `image-archive`, `branch-tip-gate`, `image-push`, `webhook-deploy` | com, SkyNetHR, Adventures, Licensing, Blog migrated |
 | 5 | .NET | `dotnet.yml`, `nuget-feed`; GitVersion strategy in `version` | Platform, Licensing, Platform.Updater, Cleaner migrated; HotCorners/WinGet use it for CI |
-| 6 | Consolidate | `claude-review.yml`, `pages.yml`; drift report (repo → pinned ref); `v1.0.0` | All SubZeroDev repos on `@v1`; `v1.0.0` tagged |
+| 6 | Consolidate | `pages.yml`; drift report (repo → pinned ref); `v1.0.0` | All SubZeroDev repos on `@v1`; `v1.0.0` tagged |
 | 7 | Optional extensions | Environment promotion list with approvals; cloud deploys via OIDC (Azure Web App / Functions, etc.); secret-to-config token replacement | On demand |
 
 Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-local.
@@ -260,4 +259,6 @@ Not templated: HotCorners Velopack release and WinGet Nuke release stay repo-loc
    workflow; Windows repositories pass their own `os`.
 2. ~~Docs builder: PowerShell or a Node CLI?~~ Resolved: PowerShell, which the build-agent image already has.
 3. Starter workflows: add a `workflow-templates/` set to a `The-Running-Dev/.github` repository for the "New workflow" UI?
-4. Claude review: include it in the public library, or keep it as a SubZeroDev-only shared workflow?
+4. ~~Claude review: include it in the public library, or keep it as a SubZeroDev-only shared workflow?~~
+   Resolved: SubZeroDev-only. It lives at `The-Running-Dev/.github/.github/workflows/claude-review.yml`,
+   outside this library.
