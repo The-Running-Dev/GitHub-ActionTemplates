@@ -51,7 +51,8 @@ In workflow-file order, then job and step order:
   A `working-directory` other than the root prefixes `cd <folder> && `. A job like this has no
   steps of its own, so it carries no `# verification: true` marker.
 - **A step marked `# verification: true`** on the line before it: its `run`, with
-  `working-directory` as a `cd` prefix. The gate's name is the job and the step name.
+  `working-directory` as a `cd` prefix, falling back to the job's `defaults.run.working-directory`
+  and then the workflow's. The gate's name is the job and the step name.
 
 Script entries become `pwsh -NoProfile -File ./path.ps1` for PowerShell and `./path` for other
 files. Each gate is named `<job> / <what it runs>`.

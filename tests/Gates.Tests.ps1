@@ -161,6 +161,44 @@ jobs:
         )
     }
 
+    It 'runs a marked step in its own folder, else the job default, else the workflow default' {
+        $workspace = New-Workspace @'
+on: push
+defaults:
+  run:
+    working-directory: site
+jobs:
+  videos:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: videos
+    steps:
+      # verification: true
+      - name: Typecheck
+        run: npx tsc --noEmit
+      # verification: true
+      - name: Lint docs
+        working-directory: docs
+        run: ./lint.sh
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      # verification: true
+      - name: Build
+        run: npm run build
+'@
+
+        $result = Invoke-GateAction $workspace @{ INPUT_WRITE = 'true' }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        Get-GateList $workspace | ForEach-Object { "$($_['name']) => $($_['command'])" } | Should -Be @(
+            'videos / Typecheck => cd videos && npx tsc --noEmit'
+            'videos / Lint docs => cd docs && ./lint.sh'
+            'site / Build => cd site && npm run build'
+        )
+    }
+
     It 'reads dotnet calls: the restore, build and test of the solution between the scripts' {
         $workspace = New-Workspace @'
 on: push

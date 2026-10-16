@@ -6,6 +6,11 @@ section for its version.
 
 ## [Unreleased]
 
+### Fixed
+- `gates` gives a step marked `# verification: true` the job's or the workflow's
+  `defaults.run.working-directory` as its `cd` prefix when the step sets no `working-directory`
+  of its own, so the gate runs in the folder the step runs in.
+
 ## [0.8.2] - 2026-10-17
 
 ### Fixed
