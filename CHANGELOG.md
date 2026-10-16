@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-16
+
 ### Added
 - `pages.yml` reusable workflow: builds a static site or single-page app with Node on a hosted
   runner and deploys it to GitHub Pages from the default branch and tags, skipping a commit that
