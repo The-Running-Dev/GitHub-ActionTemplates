@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-10-17
+
 ### Fixed
 - `pester` runs the tests with `$PSNativeCommandUseErrorActionPreference = $false` (PowerShell's
   default) instead of leaking its own `$true`, so a test that runs a native command expected to
