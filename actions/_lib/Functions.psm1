@@ -377,6 +377,28 @@ function Install-NodePackage {
     finally { Pop-Location }
 }
 
+function Invoke-PackageManager {
+    <#
+    .SYNOPSIS
+    Runs npm, pnpm or yarn with the given arguments.
+    .DESCRIPTION
+    Each manager is named literally. On Windows, npm 10's npm.ps1 rebuilds its arguments from the
+    text of the calling statement, so `& $manager run build` reaches npm as `manager run build`.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][ValidateSet('npm', 'pnpm', 'yarn')][string] $PackageManager,
+        [string[]] $Arguments = @()
+    )
+
+    switch ($PackageManager) {
+        'npm' { npm @Arguments }
+        'pnpm' { pnpm @Arguments }
+        'yarn' { yarn @Arguments }
+    }
+    if ($LASTEXITCODE -ne 0) { throw "$PackageManager $($Arguments -join ' ') failed with exit code $LASTEXITCODE." }
+}
+
 function Install-PowerShellModule {
     <#
     .SYNOPSIS

@@ -259,6 +259,59 @@ Describe 'Get-PackageManager' {
     }
 }
 
+Describe 'Invoke-PackageManager' {
+    BeforeAll {
+        # Rebuilds its arguments from the calling statement's text, as npm 10's npm.ps1 does on Windows.
+        $script:Shim = Join-Path $TestDrive 'shim'
+        New-Item -ItemType Directory -Path $script:Shim | Out-Null
+        Set-Content (Join-Path $script:Shim 'npm.ps1') @'
+$statement = if ($MyInvocation.Statement) { $MyInvocation.Statement } else {
+    [Management.Automation.InvocationInfo].GetProperty('ScriptPosition', [Reflection.BindingFlags] 'Instance, NonPublic').GetValue($MyInvocation).Text
+}
+$text = [Management.Automation.Language.Parser]::ParseInput($statement, [ref] $null, [ref] $null).
+    EndBlock.Statements.PipelineElements.CommandElements.Extent.Text -join ' '
+$received = Invoke-Expression "& { `$args } $($text.Substring($MyInvocation.InvocationName.Length).Trim())"
+Set-Content -LiteralPath $env:SHIM_LOG -Value ($received -join ' ')
+exit [int] $env:SHIM_EXIT
+'@
+        $script:SavedPath = $env:PATH
+        $env:PATH = $script:Shim + [IO.Path]::PathSeparator + $env:PATH
+    }
+
+    AfterAll {
+        $env:PATH = $script:SavedPath
+        Remove-Item Env:SHIM_LOG, Env:SHIM_EXIT -ErrorAction SilentlyContinue
+    }
+
+    BeforeEach {
+        $env:SHIM_LOG = Join-Path $TestDrive "log-$([guid]::NewGuid().ToString('n')).txt"
+        $env:SHIM_EXIT = '0'
+    }
+
+    It 'passes the arguments through a shim that reads the calling statement' {
+        $script = 'build'
+
+        Invoke-PackageManager npm run, $script
+
+        Get-Content -LiteralPath $env:SHIM_LOG | Should -Be 'run build'
+    }
+
+    It 'shows the shim misreading a call through a variable' {
+        $manager = 'npm'
+        $script = 'build'
+
+        & $manager run $script
+
+        Get-Content -LiteralPath $env:SHIM_LOG | Should -Be 'manager run build'
+    }
+
+    It 'throws when the package manager fails' {
+        $env:SHIM_EXIT = '3'
+
+        { Invoke-PackageManager npm test } | Should -Throw '*npm test failed with exit code 3*'
+    }
+}
+
 Describe 'Split-CommandLine' {
     It 'splits <Name>' -ForEach @(
         @{ Name = 'spaces and new lines'; Value = "--no-restore  -v q`r`n--blame`n"; Expected = @('--no-restore', '-v', 'q', '--blame') }

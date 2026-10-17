@@ -35,8 +35,10 @@ Write-Group 'Tools' {
         python = '--version'
     }
     foreach ($tool in $tools.Keys) {
-        if (Get-Command $tool -CommandType Application -ErrorAction SilentlyContinue) {
-            $output = & $tool $tools[$tool] 2>&1 | Select-Object -First 1
+        # The executable itself: on Windows, `& npm` from a variable would run npm.ps1, which misreads its arguments.
+        $command = Get-Command $tool -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($command) {
+            $output = & $command.Source $tools[$tool] 2>&1 | Select-Object -First 1
             Write-Host ("{0,-7} {1}" -f $tool, $output)
         }
         else {

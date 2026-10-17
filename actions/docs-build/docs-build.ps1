@@ -75,7 +75,7 @@ else {
     Write-Host "Building '$source' with $packageManager run $buildCommand"
     Install-NodePackage $sourcePath $packageManager
     Push-Location -LiteralPath $sourcePath
-    try { & $packageManager run $buildCommand }
+    try { Invoke-PackageManager $packageManager run, $buildCommand }
     finally { Pop-Location }
 }
 
