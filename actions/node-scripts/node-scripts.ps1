@@ -34,7 +34,7 @@ function Invoke-Project([string] $Path, [string[]] $Scripts, [string[]] $Setup =
             # Setup scripts prepare the install (vendored packages, generated files), so they run first.
             foreach ($script in $Setup) { npm run $script }
             Install-NodePackage $Path $manager
-            foreach ($script in $Scripts) { & $manager run $script }
+            foreach ($script in $Scripts) { Invoke-PackageManager $manager run, $script }
         }
         finally { Pop-Location }
     }

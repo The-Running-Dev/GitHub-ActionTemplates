@@ -6,6 +6,13 @@ section for its version.
 
 ## [Unreleased]
 
+### Fixed
+- `node-scripts` (and so `node-ci` and `npm-package`) and `docs-build` call the package manager by
+  its literal name. On Windows, the `npm.ps1` of npm 10.9.3 and earlier (Node 22.18.0's npm)
+  rebuilds its arguments from the calling statement's text, so `& $manager run test` reached npm as
+  `manager run test` and failed with `Unknown command: "manager"`. `debug` prints the npm version
+  through the executable for the same reason.
+
 ## [0.8.3] - 2026-10-17
 
 ### Fixed
