@@ -6,7 +6,7 @@ Each problem is annotated on its file and line, and the job summary lists them.
 [`pwsh-ci.yml`](../../docs/pwsh-ci.md) runs it before Pester.
 
 ```yaml
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/pwsh-check@v0
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/pwsh-check@v1
   with:
     paths: |
       src

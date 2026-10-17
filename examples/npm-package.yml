@@ -14,7 +14,7 @@ jobs:
       contents: write
       packages: write
       id-token: write
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/npm-package.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/npm-package.yml@v1
     with:
       access: public
     secrets:

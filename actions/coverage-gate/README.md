@@ -5,7 +5,7 @@ summary, and fails when the combined coverage is below a minimum. With the defau
 of `0` it only reports.
 
 ```yaml
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/coverage-gate@v0
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/coverage-gate@v1
   with:
     minimum: 80
 ```

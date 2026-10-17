@@ -6,7 +6,7 @@ image is the one serving, not the old one still up. [`container.yml`](../../docs
 runs it in its deploy job.
 
 ```yaml
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/webhook-deploy@v0
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/webhook-deploy@v1
   with:
     url: ${{ secrets.DEPLOY_WEBHOOK_URL }}
     health-url: https://example.com/version.json

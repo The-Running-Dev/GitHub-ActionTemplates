@@ -6,12 +6,12 @@ Packs a .NET solution into NuGet packages with a computed version, in a determin
 ```yaml
 steps:
   - id: version
-    uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v1
     with:
       strategy: manifest
 
   - id: pack
-    uses: The-Running-Dev/GitHub-ActionTemplates/actions/dotnet-pack@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/actions/dotnet-pack@v1
     with:
       version: ${{ steps.version.outputs.version }}
 

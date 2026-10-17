@@ -15,7 +15,7 @@ reports, for an image Buildx already pushed. Log in to the registry first.
 - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
 - id: push
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-push@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-push@v1
   with:
     source: ${{ steps.load.outputs.image }}
     tags: ${{ steps.meta.outputs.tags }}

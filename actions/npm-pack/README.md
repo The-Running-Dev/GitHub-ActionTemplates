@@ -7,12 +7,12 @@ and publishes the tarball in a later job.
 
 ```yaml
 - id: version
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v1
   with:
     strategy: manifest
 
 - id: pack
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/npm-pack@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/npm-pack@v1
   with:
     version: ${{ steps.version.outputs.version }}
 

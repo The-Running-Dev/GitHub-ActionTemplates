@@ -6,7 +6,7 @@ the path of a script it keeps in its own repository, and [`docs.yml`](../../docs
 runs its `pre-build` and `post-build` inputs through this action.
 
 ```yaml
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/run-scripts@v0
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/run-scripts@v1
   with:
     scripts: |
       ./build/Test-Documentation.ps1

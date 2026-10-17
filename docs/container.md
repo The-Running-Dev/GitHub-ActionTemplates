@@ -56,7 +56,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/container.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/container.yml@v1
     with:
       tags: short-sha version minor major latest
       fetch-depth: 0

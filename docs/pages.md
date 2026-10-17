@@ -32,7 +32,7 @@ permissions: {}
 jobs:
   pages:
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v1
 ```
 
 The caller must grant all three permissions even on pull requests, where the deploy job is
@@ -145,7 +145,7 @@ jobs:
   pages:
     needs: build
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v1
     with:
       artifact: site
       artifact-path: site

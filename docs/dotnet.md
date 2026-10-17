@@ -62,7 +62,7 @@ jobs:
       contents: write
       packages: write
       id-token: write
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/dotnet.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/dotnet.yml@v1
     with:
       os: '["ubuntu-latest", "windows-latest"]'
       coverage: true

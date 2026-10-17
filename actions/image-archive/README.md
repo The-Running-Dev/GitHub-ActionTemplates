@@ -7,7 +7,7 @@ build job and loads in its publish job.
 
 ```yaml
 # Build job
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-archive@v0
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-archive@v1
   with:
     image: app:${{ github.sha }}
     path: ${{ runner.temp }}/image
@@ -25,7 +25,7 @@ build job and loads in its publish job.
     path: ${{ runner.temp }}/image
 
 - id: load
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-archive@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-archive@v1
   with:
     mode: load
     path: ${{ runner.temp }}/image

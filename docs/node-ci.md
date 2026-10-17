@@ -29,7 +29,7 @@ jobs:
   ci:
     permissions:
       contents: read
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/node-ci.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/node-ci.yml@v1
     with:
       node-versions: '["20", "22", "24"]'
       scripts: lint test

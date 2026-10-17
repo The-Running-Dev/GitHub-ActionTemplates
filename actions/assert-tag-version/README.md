@@ -6,7 +6,7 @@ cannot be published with the wrong number. On any other build it does nothing an
 
 ```yaml
 - id: assert
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/assert-tag-version@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/assert-tag-version@v1
   with:
     manifest: src/MyLib/MyLib.csproj
 ```

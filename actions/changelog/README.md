@@ -11,7 +11,7 @@ squash-merge every pull request, where each commit on the default branch is one 
     fetch-depth: 0
     persist-credentials: false
 
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/changelog@v0
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/changelog@v1
   with:
     path: docs/docs/CHANGELOG.md
     front-matter: |

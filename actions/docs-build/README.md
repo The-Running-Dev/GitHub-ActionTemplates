@@ -20,7 +20,7 @@ Two builders:
     persist-credentials: false
 
 - id: docs
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/docs-build@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/docs-build@v1
   with:
     source: docs
 
