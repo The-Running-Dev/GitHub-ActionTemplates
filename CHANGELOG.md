@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-10-17
+
 ### Fixed
 - `node-scripts` (and so `node-ci` and `npm-package`) and `docs-build` call the package manager by
   its literal name. On Windows, the `npm.ps1` of npm 10.9.3 and earlier (Node 22.18.0's npm)
