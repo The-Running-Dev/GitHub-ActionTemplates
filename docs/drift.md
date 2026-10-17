@@ -25,7 +25,7 @@ included) on all repositories.
 
 - Only workflow files (`.github/workflows/*.yml`) on each repository's default branch are read.
   A composite action in a consumer that uses the library is not counted.
-- `@v0` is current while `v0` is on the latest release. After `v1.0.0`, a repository still on
-  `@v0` is reported `behind`.
+- `@v1` is current while `v1` is on the latest release. A repository still on `@v0` stays on
+  0.8.4 and is reported `behind`.
 - The step does not fail on drift. Another repository can run the action with
   `fail-on-drift: true` and a `repositories` list to enforce it.

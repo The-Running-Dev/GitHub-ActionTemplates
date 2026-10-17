@@ -5,7 +5,7 @@ for single-page apps. [`pages.yml`](../../docs/pages.md) runs it after the build
 
 ```yaml
 - id: site
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/pages-check@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/pages-check@v1
   with:
     path: dist
     spa: true

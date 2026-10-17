@@ -10,6 +10,6 @@ permissions: {}
 jobs:
   pages:
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v1
     with:
       spa: true

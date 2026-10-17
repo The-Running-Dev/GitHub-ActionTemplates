@@ -6,7 +6,7 @@ runs scripts inside it; `stop` prints the container log and removes it.
 
 ```yaml
 - id: smoke
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-gate@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-gate@v1
   with:
     image: app:${{ github.sha }}
     port: '8080'
@@ -22,7 +22,7 @@ runs scripts inside it; `stop` prints the container log and removes it.
     SMOKE_URL: ${{ steps.smoke.outputs.url }}
 
 - if: always()
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-gate@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-gate@v1
   with:
     mode: stop
 ```

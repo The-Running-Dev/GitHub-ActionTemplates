@@ -13,7 +13,7 @@ body:
     attributes:
       label: Template or action
       description: Which template or action, and the ref you pinned?
-      placeholder: e.g., actions/version@v0, actions/context@v0.1.0
+      placeholder: e.g., actions/version@v1, actions/context@v1.0.0
     validations:
       required: true
 

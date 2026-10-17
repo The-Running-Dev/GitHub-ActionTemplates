@@ -10,7 +10,7 @@ The rules are in [docs/conventions.md](../../docs/conventions.md#versions).
     persist-credentials: false
 
 - id: version
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v1
   with:
     strategy: manifest # tag | manifest | run-number | gitversion
 

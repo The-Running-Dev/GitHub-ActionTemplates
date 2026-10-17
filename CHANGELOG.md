@@ -6,6 +6,15 @@ section for its version.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-17
+
+### Changed
+- First stable release, with the same workflows and actions as 0.8.4. Their inputs and outputs are
+  now the public contract: within `v1` they are only added, never removed or renamed.
+- Consumers pin `@v1`. `v0` stays on 0.8.4, and the drift report shows a repository still on it
+  as `behind`.
+- The README, the docs, the action READMEs and `examples/` pin `@v1`.
+
 ## [0.8.4] - 2026-10-17
 
 ### Fixed

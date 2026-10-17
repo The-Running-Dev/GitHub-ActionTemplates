@@ -24,7 +24,7 @@ in every repository.
 jobs:
   docs:
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v1
 ```
 
 Complete caller workflows are in [examples/](examples).
@@ -81,10 +81,10 @@ jobs:
           persist-credentials: false
 
       - id: version
-        uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v0
+        uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v1
 
       - id: context
-        uses: The-Running-Dev/GitHub-ActionTemplates/actions/context@v0
+        uses: The-Running-Dev/GitHub-ActionTemplates/actions/context@v1
 
       - run: echo "Building ${{ steps.version.outputs.version }}"
 
@@ -99,8 +99,8 @@ moves the major tag to the same commit:
 
 | Pin | You get | Use when |
 |---|---|---|
-| `@v0` (`@v1` from 1.0) | Every compatible release automatically | Your own repositories, low ceremony |
-| `@v0.1.0` | Exactly that release | You want to review every upgrade |
+| `@v1` | Every compatible release automatically | Your own repositories, low ceremony |
+| `@v1.0.0` | Exactly that release | You want to review every upgrade |
 | `@<full commit SHA>` | Exactly that commit, immutable | Required by an SHA-pinning policy; let Dependabot bump it |
 
 Within a major version, inputs and outputs are only added, never removed or renamed. Breaking

@@ -11,7 +11,7 @@ jobs:
   ci:
     permissions:
       contents: read
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pwsh-ci.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pwsh-ci.yml@v1
     with:
       os: '["ubuntu-latest", "windows-latest"]'
       analyzer: true

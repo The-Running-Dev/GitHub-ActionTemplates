@@ -5,7 +5,7 @@ projects it depends on. [`docs.yml`](../../docs/docs.md) runs it after the docum
 when its `node-project` input is set, for a site project that checks or merges the built docs.
 
 ```yaml
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/node-scripts@v0
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/node-scripts@v1
   with:
     path: site
     scripts: check merge

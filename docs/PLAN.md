@@ -258,8 +258,8 @@ The drift report lists these repositories as `unused`, and that is expected.
   a reusable workflow: it reads every repository of the owner through the API (`DRIFT_TOKEN`
   for private ones) and never checks one out. It reads workflow files on default branches only
   and reports a ref as current when it resolves to the latest `vX.Y.Z` release's commit, so
-  `@v0` is current until `v1.0.0` ships. Its `unused` list tracks the repositories still to
-  migrate.
+  since `v1.0.0` `@v1` is current and `@v0` is `behind`. Its `unused` list tracks the
+  repositories still to migrate.
 
 ## Open questions
 

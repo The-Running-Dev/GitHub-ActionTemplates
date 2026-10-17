@@ -7,7 +7,7 @@ tags in its publish job.
 
 ```yaml
 - id: meta
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-meta@v0
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-meta@v1
   with:
     image: ghcr.io/${{ github.repository }}
     tags: short-sha version minor major latest

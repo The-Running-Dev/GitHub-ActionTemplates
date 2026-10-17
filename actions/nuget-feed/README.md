@@ -10,7 +10,7 @@ permissions:
   packages: read # github.token reads GitHub Packages
 
 steps:
-  - uses: The-Running-Dev/GitHub-ActionTemplates/actions/nuget-feed@v0
+  - uses: The-Running-Dev/GitHub-ActionTemplates/actions/nuget-feed@v1
     with:
       sources: github
 

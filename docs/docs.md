@@ -33,7 +33,7 @@ permissions: {}
 jobs:
   docs:
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v0
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v1
 ```
 
 The caller must grant all three permissions even on pull requests, where the deploy job is
