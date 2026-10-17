@@ -266,7 +266,9 @@ The drift report lists these repositories as `unused`, and that is expected.
 1. ~~Default runner OS for `dotnet.yml`?~~ Resolved: `["ubuntu-latest"]`, as for every matrix
    workflow; Windows repositories pass their own `os`.
 2. ~~Docs builder: PowerShell or a Node CLI?~~ Resolved: PowerShell, which the build-agent image already has.
-3. Starter workflows: add a `workflow-templates/` set to a `The-Running-Dev/.github` repository for the "New workflow" UI?
+3. ~~Starter workflows: add a `workflow-templates/` set to a `The-Running-Dev/.github` repository for the "New workflow" UI?~~
+   Resolved: yes. `The-Running-Dev/.github/workflow-templates/` has one template per archetype, each
+   calling the library workflow at `@v1`, with `filePatterns` so GitHub suggests the matching one.
 4. ~~Claude review: include it in the public library, or keep it as a SubZeroDev-only shared workflow?~~
    Resolved: SubZeroDev-only. It lives at `The-Running-Dev/.github/.github/workflows/claude-review.yml`,
    outside this library.
