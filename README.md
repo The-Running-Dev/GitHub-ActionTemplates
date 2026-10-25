@@ -123,6 +123,19 @@ A weekly [drift report](docs/drift.md) lists the ref each repository of the owne
 - `debug` never prints a variable whose name contains TOKEN, SECRET, PASSWORD, KEY, CREDENTIAL
   or AUTH.
 
+A workflow that signs release tags with SSH gets its key from
+[`scripts/Initialize-ReleaseSigningKey.ps1`](scripts/Initialize-ReleaseSigningKey.ps1), run once on
+the maintainer's machine:
+
+```powershell
+./scripts/Initialize-ReleaseSigningKey.ps1 -Repository owner/name -BackupDirectory E:```
+
+It creates (or reuses) a passphrase-less ed25519 key in `~/.keys`, copies it to the offline backup
+folder and checks the copy, creates a `release` environment that only `main` can deploy from,
+pipes the key into that environment's `RELEASE_SIGNING_KEY` secret, and prints the
+`allowed_signers` line for the public half (`-AllowedSignersPath` appends it). The job then sets
+`environment: release`.
+
 Report a vulnerability through the repository's **Security → Report a vulnerability** form, not a
 public issue.
 

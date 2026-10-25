@@ -6,6 +6,12 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `scripts/Initialize-ReleaseSigningKey.ps1`: one-time setup for a workflow that signs release tags
+  with SSH. It creates or reuses a passphrase-less ed25519 key outside the repository, backs it up
+  and checks the copy, restricts a `release` environment to `main`, stores the key as that
+  environment's `RELEASE_SIGNING_KEY` secret, and prints the key's `allowed_signers` line.
+
 ## [1.0.0] - 2026-10-17
 
 ### Changed
