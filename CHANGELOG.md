@@ -12,6 +12,11 @@ section for its version.
   and checks the copy, restricts a `release` environment to `main`, stores the key as that
   environment's `RELEASE_SIGNING_KEY` secret, and prints the key's `allowed_signers` line.
 
+### Fixed
+- `Initialize-ReleaseSigningKey.ps1` restricts the key file to its owner on Windows, where OpenSSH
+  ignores a key another account can read and a file under the profile can inherit such an entry.
+  It also shows `ssh-keygen`'s own reason when the key is refused.
+
 ## [1.0.0] - 2026-10-17
 
 ### Changed

@@ -48,9 +48,22 @@ else {
     Write-Host "Created $KeyPath"
 }
 
+# Windows OpenSSH ignores a private key that any other account can read, and a file under the
+# profile can inherit such an entry (a sandbox users group, say), so only the owner keeps access.
+if ($IsWindows) {
+    $owner = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    icacls $KeyPath /reset /Q | Out-Null
+    icacls $KeyPath /inheritance:r /grant:r "*${owner}:F" /Q | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Could not restrict $KeyPath to the current user." }
+}
+
 # -P '' fails on a key with a passphrase, which a runner has no way to type.
-$publicLine = ssh-keygen -y -P '' -f $KeyPath 2> $null
-if ($LASTEXITCODE -ne 0 -or -not $publicLine) { throw "$KeyPath is not a passphrase-less OpenSSH private key." }
+$check = @(ssh-keygen -y -P '' -f $KeyPath 2>&1)
+$publicLine = $check | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] } | Select-Object -First 1
+if ($LASTEXITCODE -ne 0 -or -not $publicLine) {
+    $reason = ($check | Where-Object { $_ -is [Management.Automation.ErrorRecord] }) -join ' '
+    throw "$KeyPath is not a passphrase-less OpenSSH private key. ssh-keygen: $reason"
+}
 $fields = "$publicLine".Trim() -split '\s+'
 if ($fields[0] -ne 'ssh-ed25519') { throw "$KeyPath is a $($fields[0]) key, not ssh-ed25519." }
 $publicKey = "$($fields[0]) $($fields[1])"

@@ -158,6 +158,19 @@ exit 1
         Get-GhCall $log | Where-Object { $_ -match '-X (PUT|POST)' } | Should -BeNullOrEmpty
     }
 
+    It 'restricts a key other accounts can read to its owner' -Skip:(-not $IsWindows) {
+        $log = New-Folder 'log'; $keys = New-Folder 'keys'
+        $key = Join-Path $keys 'key'
+        ssh-keygen -q -t ed25519 -N '' -f $key
+        icacls $key /grant '*S-1-1-0:R' /Q | Out-Null
+
+        $result = Invoke-Initialize $log @('-KeyPath', $key, '-BackupDirectory', 'SKIP')
+
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        (Get-Acl $key).Access.IdentityReference.Value | Should -Be ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
+        Test-Path (Join-Path $log 'secret.txt') | Should -BeTrue
+    }
+
     It 'refuses a key with a passphrase' {
         $log = New-Folder 'log'; $keys = New-Folder 'keys'
         $key = Join-Path $keys 'key'
