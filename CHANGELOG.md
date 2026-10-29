@@ -7,6 +7,9 @@ section for its version.
 ## [Unreleased]
 
 ### Added
+- `dotnet.yml` opt-in `diagnostic-artifact-paths` and `diagnostic-artifact-name`: upload a separate
+  caller-staged diagnostic bundle on success or failure (unless cancelled), independently of
+  test outputs, with the existing retention setting. Empty paths preserve existing behavior.
 - `scripts/Initialize-ReleaseSigningKey.ps1`: one-time setup for a workflow that signs release tags
   with SSH. It creates or reuses a passphrase-less ed25519 key outside the repository, backs it up
   and checks the copy, restricts a `release` environment to `main`, stores the key as that

@@ -88,8 +88,16 @@ on:
         description: Name prefix of the test results artifact; the runner is appended.
         type: string
         default: dotnet-test
+      diagnostic-artifact-paths:
+        description: Optional diagnostic files or globs from the repository root, one per line. Uploaded after failure too; callers must stage only safe evidence. Empty disables this upload.
+        type: string
+        default: ''
+      diagnostic-artifact-name:
+        description: Name prefix of the optional diagnostic artifact; the runner is appended.
+        type: string
+        default: dotnet-diagnostics
       retention-days:
-        description: Days to keep the test results and packages artifacts.
+        description: Days to keep test results, optional diagnostics and packages artifacts.
         type: number
         default: 7
       pack:
@@ -301,6 +309,16 @@ jobs:
             ${{ steps.test.outputs.coverage-report }}
           retention-days: ${{ inputs.retention-days }}
           if-no-files-found: warn
+
+      - name: Upload diagnostics
+        if: ${{ !cancelled() && inputs.diagnostic-artifact-paths != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.diagnostic-artifact-name }}-${{ matrix.os }}
+          path: ${{ inputs.diagnostic-artifact-paths }}
+          retention-days: ${{ inputs.retention-days }}
+          if-no-files-found: warn
+          include-hidden-files: false
 
   pack:
     name: Pack
