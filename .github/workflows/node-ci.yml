@@ -101,6 +101,10 @@ on:
         description: Timeout of each test job.
         type: number
         default: 30
+      utility-runs-on:
+        description: Runner label for the Result job.
+        type: string
+        default: ubuntu-latest
 
 permissions: {}
 
@@ -197,7 +201,7 @@ jobs:
     name: Result
     needs: test
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 5
     permissions: {}
     steps:

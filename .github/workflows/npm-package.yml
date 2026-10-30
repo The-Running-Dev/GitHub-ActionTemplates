@@ -94,6 +94,14 @@ on:
         description: Timeout of the build job.
         type: number
         default: 30
+      runs-on:
+        description: Runner label for the build job.
+        type: string
+        default: ubuntu-latest
+      utility-runs-on:
+        description: Runner label for the Publish and GitHub release jobs.
+        type: string
+        default: ubuntu-latest
     secrets:
       NPM_TOKEN:
         description: npm automation token. Without it npmjs uses trusted publishing and GitHub Packages uses `github.token`.
@@ -114,7 +122,7 @@ permissions: {}
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -196,7 +204,7 @@ jobs:
     if: >-
       inputs.publish && (needs.build.outputs.is-tag == 'true' ||
       (inputs.publish-prereleases && needs.build.outputs.is-default-branch == 'true'))
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -236,7 +244,7 @@ jobs:
     if: >-
       !cancelled() && inputs.github-release && needs.build.result == 'success' &&
       needs.build.outputs.is-tag == 'true' && contains(fromJSON('["success", "skipped"]'), needs.publish.result)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 15
     permissions:
       contents: write

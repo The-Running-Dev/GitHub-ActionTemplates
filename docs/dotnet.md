@@ -128,6 +128,7 @@ To release: set the version, add the CHANGELOG section, merge, then push the tag
 | `fetch-depth` | `1` | Commits to fetch. The `tag` and `gitversion` strategies fetch all history to pack. |
 | `submodules` | `false` | `true`, `recursive` or `false`. |
 | `timeout-minutes` | `30` | Timeout of the test and pack jobs. |
+| `utility-runs-on` | `ubuntu-latest` | Runner for the Publish, GitHub release and Result jobs. A self-hosted Linux label keeps private repositories off hosted minutes. |
 
 | Secret | Description |
 |---|---|

@@ -7,6 +7,10 @@ section for its version.
 ## [Unreleased]
 
 ### Added
+- `utility-runs-on` on `dotnet.yml`, `node-ci.yml`, `pwsh-ci.yml`, `pages.yml`, `docs.yml`,
+  `container.yml` and `npm-package.yml`: the runner for their publish, release, deploy and Result
+  jobs, so private repositories can run every job on self-hosted runners. `npm-package.yml` also
+  gains `runs-on` for its build job. Defaults stay `ubuntu-latest`.
 - `scripts/Initialize-ReleaseSigningKey.ps1`: one-time setup for a workflow that signs release tags
   with SSH. It creates or reuses a passphrase-less ed25519 key outside the repository, backs it up
   and checks the copy, restricts a `release` environment to `main`, stores the key as that
