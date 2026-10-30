@@ -99,6 +99,7 @@ Vitest (`--reporter=junit`, `--coverage.reporter=cobertura`) and Jest (`jest-jun
 | `fetch-depth` | `1` | Commits to fetch; 0 fetches all history. |
 | `submodules` | `false` | `true`, `recursive` or `false`. |
 | `timeout-minutes` | `30` | Timeout of each test job. |
+| `utility-runs-on` | `ubuntu-latest` | Runner for the Result job. |
 
 The workflow has no outputs.
 

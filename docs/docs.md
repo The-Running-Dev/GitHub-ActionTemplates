@@ -73,6 +73,7 @@ listed in [`actions/docs-build/template/package.json`](../actions/docs-build/tem
 | `deploy` | `true` | `false` only builds and uploads the artifact. |
 | `image` | build-agent, by digest | Container image for the build job. It needs PowerShell 7, git and Node, and `build` for the `template` builder. |
 | `runs-on` | `ubuntu-latest` | Runner for the build job; it must run Linux containers. |
+| `utility-runs-on` | `ubuntu-latest` | Runner for the Deploy job. |
 | `fetch-depth` | `1` | `0` for full history (last-updated dates from git). Always `0` when `changelog` is set. |
 | `submodules` | `false` | As for `actions/checkout`. |
 | `artifact-name` | `github-pages` | Pages artifact name; change it when a workflow builds more than one site. |

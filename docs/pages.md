@@ -89,6 +89,7 @@ export default defineConfig({ base: process.env.PAGES_BASE_PATH ?? '/' });
 | `submodules` | `false` | As for `actions/checkout`. |
 | `artifact-name` | `github-pages` | Pages artifact name; change it when a workflow builds more than one site. |
 | `timeout-minutes` | `30` | Timeout of the build job. |
+| `utility-runs-on` | `ubuntu-latest` | Runner for the Deploy and Result jobs. |
 
 ## Secrets
 

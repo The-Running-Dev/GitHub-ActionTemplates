@@ -110,6 +110,10 @@ on:
         description: Timeout of the build job.
         type: number
         default: 30
+      utility-runs-on:
+        description: Runner label for the Deploy and Result jobs.
+        type: string
+        default: ubuntu-latest
     secrets:
       BUILD_ENV:
         description: Secret build variables as `KEY=value`, one per line; each value is masked.
@@ -206,7 +210,7 @@ jobs:
     name: Deploy
     needs: build
     if: inputs.deploy && needs.build.outputs.should-publish == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -270,7 +274,7 @@ jobs:
     name: Result
     needs: [build, deploy]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 5
     permissions: {}
     steps:
