@@ -7,6 +7,9 @@ section for its version.
 ## [Unreleased]
 
 ### Added
+- `dotnet.yml` opt-in `diagnostic-artifact-paths` and `diagnostic-artifact-name`: upload a separate
+  caller-staged diagnostic bundle on success or failure (unless cancelled), independently of
+  test outputs, with the existing retention setting. Empty paths preserve existing behavior.
 - `utility-runs-on` on `dotnet.yml`, `node-ci.yml`, `pwsh-ci.yml`, `pages.yml`, `docs.yml`,
   `container.yml` and `npm-package.yml`: the runner for their publish, release, deploy and Result
   jobs, so private repositories can run every job on self-hosted runners. `npm-package.yml` also

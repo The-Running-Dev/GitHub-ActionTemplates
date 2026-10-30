@@ -104,6 +104,8 @@ To release: set the version, add the CHANGELOG section, merge, then push the tag
 | `pre-build` | | Repository scripts run before the restore in `Test` and `Pack`, by path from the repository root, one per line. |
 | `post-build` | | Repository scripts run after the tests. |
 | `artifact-name` | `dotnet-test` | Name prefix of the test results artifact; the runner is appended. |
+| `diagnostic-artifact-paths` | empty (disabled) | Optional diagnostic files or globs, one per line, relative to the repository root (independent of `working-directory`). Uploads after failure too, unless cancelled; independent of TRX/coverage outputs. Stage an allowlisted bundle first. |
+| `diagnostic-artifact-name` | `dotnet-diagnostics` | Name prefix of the separate diagnostic artifact; the runner is appended. |
 | `retention-days` | `7` | Days to keep the artifacts. |
 | `pack` | `false` | Pack the NuGet packages after the tests pass, and publish them per `publish`. |
 | `pack-os` | first of `os` | Runner that packs. |
@@ -134,6 +136,29 @@ To release: set the version, add the CHANGELOG section, merge, then push the tag
 |---|---|
 | `NUGET_FEED_TOKEN` | Token for `nuget-sources`. Without it `github.token` is used. |
 | `NUGET_API_KEY` | API key for `nuget-source`. Not needed for GitHub Packages or with `nuget-user`. |
+
+## Optional diagnostics
+
+For a post-build probe that writes a dedicated, safe evidence bundle:
+
+```yaml
+      post-build: scripts/Test-Distribution.ps1
+      diagnostic-artifact-paths: artifacts/probe-evidence/
+      diagnostic-artifact-name: updater-probe-evidence
+      retention-days: 7
+```
+
+The diagnostic upload runs after a failed build, test or post-build step as well as after
+success, without depending on test-result outputs. It does not turn a failed step into success.
+Missing paths produce an upload warning; partial bundles are uploaded as available. Cancelled
+jobs and runner loss cannot guarantee collection. Hidden files are excluded. The existing test
+results upload and all consumers that leave `diagnostic-artifact-paths` empty behave as before.
+
+The caller is responsible for staging only safe files. Do not point this input at a whole smoke
+tree or workspace containing control files, credentials, signing keys, packages or user data.
+The retention setting applies to diagnostics, test results and packages; the default is 7 days.
+When consuming this new input before a release moves `v1`, pin the full implementation commit
+SHA. A `v1` or exact release pin must already contain the input; do not pass it to an older tag.
 
 ## Outputs
 

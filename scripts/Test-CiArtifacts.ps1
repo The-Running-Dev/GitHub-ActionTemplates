@@ -53,6 +53,19 @@ Test-Run 'ci-pester' 'test-results/pester.xml' 'coverage/pester-coverage.xml' 2
 # The test filter leaves out the fixture's slow test.
 Test-Run 'ci-dotnet' '*.trx' 'coverage.cobertura.xml' 2 3
 
+$diagnostics = @(Get-ChildItem -LiteralPath $artifacts -Directory -Filter 'ci-diagnostics-*')
+if ($diagnostics.Count -ne 2) { throw "Expected 2 .NET diagnostic artifacts, found $($diagnostics.Count)." }
+foreach ($diagnostic in $diagnostics) {
+    Test-Check "$($diagnostic.Name) diagnostics" {
+        $files = @(Get-ChildItem -LiteralPath $diagnostic.FullName -File -Recurse)
+        if ($files.Count -ne 2) { throw 'Expected exactly the JSON and installer log fixture.' }
+        $probe = Get-Content -LiteralPath (Join-Path $diagnostic.FullName 'probe.json') -Raw | ConvertFrom-Json
+        if ($probe.fixture -ne 'dotnet-diagnostics') { throw 'Incorrect diagnostic JSON.' }
+        $log = Get-Content -LiteralPath (Join-Path $diagnostic.FullName 'installer.log') -Raw
+        if ($log.Trim() -ne 'fixture installer evidence') { throw 'Incorrect diagnostic log.' }
+    }
+}
+
 if ($ExpectPackage) {
     Test-Check 'ci-npm-package' {
         $tarballs = @(Get-ChildItem -LiteralPath (Join-Path $artifacts 'ci-npm-package') -Filter '*.tgz')

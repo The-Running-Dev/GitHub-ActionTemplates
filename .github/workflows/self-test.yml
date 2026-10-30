@@ -229,6 +229,9 @@ jobs:
       coverage: true
       minimum-coverage: '60'
       artifact-name: ci-dotnet
+      post-build: scripts/Write-DotnetDiagnosticFixture.ps1
+      diagnostic-artifact-paths: .selftest/dotnet-diagnostics/
+      diagnostic-artifact-name: ci-diagnostics
       pack: ${{ github.ref_type != 'tag' }}
       package-artifact-name: ci-nupkg
       publish: false
