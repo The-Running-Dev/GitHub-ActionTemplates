@@ -11,12 +11,17 @@ section for its version.
   `container.yml` and `npm-package.yml`: the runner for their publish, release, deploy and Result
   jobs, so private repositories can run every job on self-hosted runners. `npm-package.yml` also
   gains `runs-on` for its build job. Defaults stay `ubuntu-latest`.
+- `runs-on` on `container.yml`: the runner for its Build and Publish jobs, which need Docker.
+  Default `ubuntu-latest`.
 - `scripts/Initialize-ReleaseSigningKey.ps1`: one-time setup for a workflow that signs release tags
   with SSH. It creates or reuses a passphrase-less ed25519 key outside the repository, backs it up
   and checks the copy, restricts a `release` environment to `main`, stores the key as that
   environment's `RELEASE_SIGNING_KEY` secret, and prints the key's `allowed_signers` line.
 
 ### Fixed
+- `image-gate` reaches the container when `DOCKER_HOST` is `tcp://<host>:<port>`, such as a
+  Docker-in-Docker sidecar: it publishes the port on all of that daemon's addresses and probes
+  `<host>`, since the daemon's loopback is not the runner's.
 - `Initialize-ReleaseSigningKey.ps1` restricts the key file to its owner on Windows, where OpenSSH
   ignores a key another account can read and a file under the profile can inherit such an entry.
   It also shows `ssh-keygen`'s own reason when the key is refused.

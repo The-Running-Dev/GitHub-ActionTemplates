@@ -202,8 +202,12 @@ on:
         description: Timeout of the build job.
         type: number
         default: 30
+      runs-on:
+        description: Runner label for the Build and Publish jobs. It needs Docker; a self-hosted Linux runner whose DOCKER_HOST is a Docker-in-Docker sidecar works.
+        type: string
+        default: ubuntu-latest
       utility-runs-on:
-        description: Runner label for the Deploy and Result jobs. Build and Publish stay on `ubuntu-latest`, which has Docker.
+        description: Runner label for the Deploy and Result jobs.
         type: string
         default: ubuntu-latest
     secrets:
@@ -244,7 +248,7 @@ permissions: {}
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -395,7 +399,7 @@ jobs:
     name: Publish
     needs: build
     if: inputs.push && needs.build.outputs.should-publish == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     timeout-minutes: 30
     environment: ${{ inputs.environment }}
     permissions:

@@ -13,7 +13,9 @@ switch ($args[0]) {
         Write-Output 'f00dfeed'
     }
     'port' {
-        if ($env:STUB_DOCKER_PORT) { Write-Output "127.0.0.1:$env:STUB_DOCKER_PORT"; Write-Output "[::1]:$env:STUB_DOCKER_PORT" }
+        # Bound where the last `run` published it: 127.0.0.1 by default, 0.0.0.0 for a remote daemon.
+        if ($env:STUB_DOCKER_PORT -and (Get-Content -LiteralPath $log -Raw) -match '--publish 0\.0\.0\.0::') { Write-Output "0.0.0.0:$env:STUB_DOCKER_PORT"; Write-Output "[::]:$env:STUB_DOCKER_PORT" }
+        elseif ($env:STUB_DOCKER_PORT) { Write-Output "127.0.0.1:$env:STUB_DOCKER_PORT"; Write-Output "[::1]:$env:STUB_DOCKER_PORT" }
     }
     'inspect' {
         if (-not (Test-Path -LiteralPath $container)) { [Console]::Error.WriteLine('Error: No such object'); exit 1 }
