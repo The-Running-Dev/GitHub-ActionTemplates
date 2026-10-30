@@ -192,6 +192,10 @@ on:
         description: Timeout of the test and pack jobs.
         type: number
         default: 30
+      utility-runs-on:
+        description: Runner label for the Publish, GitHub release and Result jobs. A self-hosted Linux label keeps private repositories off hosted minutes.
+        type: string
+        default: ubuntu-latest
     secrets:
       NUGET_FEED_TOKEN:
         description: Token for the private feeds in `nuget-sources`. Without it `github.token` is used, which reads packages of the same owner that granted this repository access.
@@ -406,7 +410,7 @@ jobs:
     if: >-
       inputs.publish && (needs.pack.outputs.is-tag == 'true' ||
       (inputs.publish-prereleases && needs.pack.outputs.is-default-branch == 'true'))
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 15
     environment: ${{ inputs.environment }}
     permissions:
@@ -483,7 +487,7 @@ jobs:
     if: >-
       !cancelled() && inputs.github-release && needs.pack.result == 'success' &&
       needs.pack.outputs.is-tag == 'true' && contains(fromJSON('["success", "skipped"]'), needs.publish.result)
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 15
     permissions:
       contents: write
@@ -511,7 +515,7 @@ jobs:
     name: Result
     needs: [test, pack, publish, post-publish, release]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 5
     permissions: {}
     steps:

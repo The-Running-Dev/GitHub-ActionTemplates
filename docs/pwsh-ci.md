@@ -79,6 +79,7 @@ In branch protection, require **`ci / Result`** (the caller's job name, then `Re
 | `fetch-depth` | `1` | Commits to fetch; 0 fetches all history. |
 | `submodules` | `false` | `true`, `recursive` or `false`. |
 | `timeout-minutes` | `30` | Timeout of each test job. |
+| `utility-runs-on` | `ubuntu-latest` | Runner for the Result job. |
 
 The workflow has no outputs.
 

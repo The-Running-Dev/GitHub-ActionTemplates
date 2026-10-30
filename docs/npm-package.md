@@ -89,6 +89,8 @@ tag (`git tag v1.2.3 && git push origin v1.2.3`).
 | `fetch-depth` | `1` | Commits to fetch. |
 | `submodules` | `false` | `true`, `recursive` or `false`. |
 | `timeout-minutes` | `30` | Timeout of the build job. |
+| `runs-on` | `ubuntu-latest` | Runner for the build job. |
+| `utility-runs-on` | `ubuntu-latest` | Runner for the Publish and GitHub release jobs. |
 
 | Secret | Description |
 |---|---|

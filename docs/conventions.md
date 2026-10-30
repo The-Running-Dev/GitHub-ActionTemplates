@@ -63,6 +63,15 @@ The release tag is always the version with the `tag-prefix` (default `v`) in fro
 - Secrets are declared by name on `workflow_call` and documented. Templates do not rely on
   `secrets: inherit`, which only works inside one owner.
 
+## Runners
+
+Every job's runner is an input, defaulting to a GitHub-hosted one, so a private repository can
+move all of its jobs to self-hosted runners. Build and test jobs take `os` (a JSON list for a
+matrix) or `runs-on`; the short publish, release, deploy and Result jobs take `utility-runs-on`.
+A single custom label (for example `subzerodev-linux`) is enough for either. The jobs that build
+container images (`container.yml` Build and Publish) stay on `ubuntu-latest`, since they need a
+Docker daemon.
+
 ## Writing actions
 
 - An action is `actions/<name>/action.yml` plus `<name>.ps1`, run with `shell: pwsh` as

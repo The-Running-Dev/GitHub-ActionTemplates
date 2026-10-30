@@ -93,6 +93,10 @@ on:
         description: Name of the Pages artifact.
         type: string
         default: github-pages
+      utility-runs-on:
+        description: Runner label for the Deploy job.
+        type: string
+        default: ubuntu-latest
     outputs:
       page-url:
         description: URL of the deployed site, empty when it was not deployed.
@@ -184,7 +188,7 @@ jobs:
     name: Deploy
     needs: build
     if: inputs.deploy && needs.build.outputs.should-publish == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.utility-runs-on }}
     timeout-minutes: 15
     permissions:
       pages: write
