@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-31
+
 ### Added
 - `dotnet.yml` opt-in `diagnostic-artifact-paths` and `diagnostic-artifact-name`: upload a separate
   caller-staged diagnostic bundle on success or failure (unless cancelled), independently of
