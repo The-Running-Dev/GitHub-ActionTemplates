@@ -74,9 +74,14 @@ $temp = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetT
 $envFile = Join-Path $temp "ghat-smoke-$([guid]::NewGuid().ToString('N')).env"
 Set-Content -LiteralPath $envFile -Value $environment -Encoding utf8
 
+# A tcp:// DOCKER_HOST is a daemon on another machine, such as a Docker-in-Docker sidecar: its loopback
+# is not ours, so the port is published on all of its addresses and probed at its host name.
+$daemonHost = if ($env:DOCKER_HOST -match '^tcp://(\[[^\]]+\]|[^:/]+)') { $Matches[1] }
+$address = if ($daemonHost) { '0.0.0.0' } else { '127.0.0.1' }
+
 $arguments = @('run', '--detach', '--name', $name, '--env-file', $envFile)
 foreach ($option in $options) { $arguments += @($option -split '\s+' | Where-Object { $_ }) }
-if ($port) { $arguments += @('--publish', "127.0.0.1::$port") }
+if ($port) { $arguments += @('--publish', "$($address)::$port") }
 $arguments += $image
 
 try {
@@ -87,10 +92,10 @@ finally { Remove-Item -LiteralPath $envFile -ErrorAction SilentlyContinue }
 
 $url = ''
 if ($port) {
-    # One line per address; the IPv4 loopback one is what the probe uses.
-    $binding = @(docker port $name "$port/tcp") | Where-Object { $_ -match '^127\.0\.0\.1:' } | Select-Object -First 1
+    # One line per address; the IPv4 one is what the probe uses.
+    $binding = @(docker port $name "$port/tcp") | Where-Object { $_ -match "^$([regex]::Escape($address)):(\d+)$" } | Select-Object -First 1
     if (-not $binding) { throw "Docker did not publish port $port of '$name'." }
-    $url = "http://$binding"
+    $url = if ($daemonHost) { "http://$($daemonHost):$($binding -replace '^.*:')" } else { "http://$binding" }
 }
 Set-ActionOutput 'container' $name
 Set-ActionOutput 'url' $url

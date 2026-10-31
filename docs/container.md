@@ -162,7 +162,8 @@ The container log is printed when the container is stopped, pass or fail.
 | `fetch-depth` | `1` | Commits to fetch; `0` for the `tag` version strategy. |
 | `submodules` | `false` | `true`, `recursive` or `false`. |
 | `timeout-minutes` | `30` | Timeout of the build job. |
-| `utility-runs-on` | `ubuntu-latest` | Runner for the Deploy and Result jobs. Build and Publish stay on `ubuntu-latest`, which has Docker. |
+| `runs-on` | `ubuntu-latest` | Runner for the Build and Publish jobs. It needs Docker; a self-hosted Linux runner whose `DOCKER_HOST` is a Docker-in-Docker sidecar works. |
+| `utility-runs-on` | `ubuntu-latest` | Runner for the Deploy and Result jobs. |
 
 | Secret | Description |
 |---|---|

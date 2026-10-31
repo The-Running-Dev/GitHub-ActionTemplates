@@ -38,6 +38,8 @@ is copied into the container under `/tmp` and run: `.sh` with `sh`, `.ps1` with 
 anything else directly. A script that exits non-zero fails the step.
 
 - `port` is published on a free `127.0.0.1` port, so parallel jobs on one machine do not clash.
+  When `DOCKER_HOST` is `tcp://<host>:<port>`, a daemon elsewhere such as a Docker-in-Docker
+  sidecar, it is published on all of that daemon's addresses and probed at `<host>` instead.
 - `env` goes through an env file that is deleted once the container starts, so values stay out
   of the log and the process list. Values may contain `;` and `=`.
 - `options` lines are split on spaces; quoting is not supported.
@@ -62,4 +64,4 @@ anything else directly. A script that exits non-zero fails the step.
 | Name | Description |
 |---|---|
 | `container` | Container name. |
-| `url` | `http://127.0.0.1:<port>`, empty without `port`. |
+| `url` | `http://127.0.0.1:<port>` (`http://<DOCKER_HOST host>:<port>` for a tcp:// daemon), empty without `port`. |

@@ -31,6 +31,8 @@ BeforeAll {
         $Environment['RUNNER_TEMP'] = $log
         $Environment['STUB_LOG'] = $log
         $Environment['PATH'] = "$Stubs$([System.IO.Path]::PathSeparator)$env:PATH"
+        # A DOCKER_HOST on the machine running the tests would change what image-gate publishes.
+        if (-not $Environment.ContainsKey('DOCKER_HOST')) { $Environment['DOCKER_HOST'] = '' }
         $result = Invoke-ActionScript (Join-Path $Actions $Name "$Name.ps1") -Environment $Environment -WorkingDirectory $Workspace
         foreach ($tool in 'docker', 'gh', 'cosign') {
             $file = Join-Path $log "$tool.txt"
@@ -304,6 +306,14 @@ Describe 'image-gate' {
         $result.Outputs['container'] | Should -Be 'ghat-smoke'
         @(Get-ChildItem $result.Temp -Filter '*.env') | Should -BeNullOrEmpty -Because 'the env file is deleted once the container runs'
         $result.Summary | Should -Match '2 script\(s\) passed in the container'
+    }
+
+    It 'publishes on all addresses of a tcp:// daemon and probes it at its host name' {
+        $result = Invoke-Action 'image-gate' @{ INPUT_IMAGE = 'app:1'; INPUT_PORT = '8080'; INPUT_HEALTH_PATH = '/text/ready'; DOCKER_HOST = 'tcp://127.0.0.1:2376'; STUB_DOCKER_PORT = "$($Server.Port)" }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $result.Docker | Should -Match '--publish 0\.0\.0\.0::8080 app:1'
+        $result.Outputs['url'] | Should -Be $Server.Url
     }
 
     It 'accepts any status when told to' {

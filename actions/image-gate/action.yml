@@ -16,7 +16,7 @@ inputs:
     required: false
     default: ''
   port:
-    description: Container port to probe over HTTP. It is published on a free 127.0.0.1 port. Empty skips the probe.
+    description: Container port to probe over HTTP. It is published on a free 127.0.0.1 port, or on all addresses of a tcp:// DOCKER_HOST. Empty skips the probe.
     required: false
     default: ''
   health-path:
@@ -49,7 +49,7 @@ outputs:
     description: Container name.
     value: ${{ steps.gate.outputs.container }}
   url:
-    description: Base URL of the published port (`http://127.0.0.1:<port>`), empty without `port`.
+    description: Base URL of the published port (`http://127.0.0.1:<port>`, or the tcp:// DOCKER_HOST's host), empty without `port`.
     value: ${{ steps.gate.outputs.url }}
 
 runs:
