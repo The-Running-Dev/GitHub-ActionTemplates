@@ -11,18 +11,18 @@ steps:
       dotnet-version: 10.0.x
 
   - id: test
-    uses: The-Running-Dev/GitHub-ActionTemplates/actions/dotnet-test@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/actions/dotnet-test@v2
     with:
       filter: Category!=Integration
       coverage: 'true'
 
   - if: ${{ !cancelled() && steps.test.outputs.results != '' }}
-    uses: The-Running-Dev/GitHub-ActionTemplates/actions/test-report@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/actions/test-report@v2
     with:
       results: ${{ steps.test.outputs.results }}
 
   - if: steps.test.outputs.coverage-report != ''
-    uses: The-Running-Dev/GitHub-ActionTemplates/actions/coverage-gate@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/actions/coverage-gate@v2
     with:
       reports: ${{ steps.test.outputs.coverage-report }}
       minimum: 60

@@ -29,7 +29,7 @@ jobs:
   ci:
     permissions:
       contents: read
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pwsh-ci.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pwsh-ci.yml@v2
     with:
       os: '["ubuntu-latest", "windows-latest"]'
       analyzer: true
@@ -54,12 +54,14 @@ In branch protection, require **`ci / Result`** (the caller's job name, then `Re
 5. [`test-report`](../actions/test-report/README.md) in the job summary, also after a failure.
 6. [`coverage-gate`](../actions/coverage-gate/README.md) when `coverage` is set.
 7. `post-build` repository scripts.
-8. Upload of the results and coverage as `<artifact-name>-<os>`, also after a failure.
+8. Optional results/coverage upload as `<artifact-name>-<os>`, on failure by default.
 
 ## Inputs
 
 | Name | Default | Description |
 |---|---|---|
+| `diagnostic-policy` | `failure` | Optional results/coverage policy: `never`, `failure`, `always`; reports and coverage gates still run. |
+| `retention-days` | `3` | Optional diagnostic lifetime, 1–90 days. |
 | `os` | `'["ubuntu-latest"]'` | Runner labels as a JSON list. |
 | `paths` | `.` | Folders or files to check, from the repository root, one per line. |
 | `exclude` | | Wildcard patterns of paths the check skips, one per line. |
@@ -86,3 +88,5 @@ The workflow has no outputs.
 ## Permissions
 
 `contents: read`.
+
+See [artifact storage and v2 migration](artifact-storage.md) for defaults, required consumers and expiry.

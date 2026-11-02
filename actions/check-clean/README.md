@@ -7,7 +7,7 @@ changes; ignored files do not.
 ```yaml
 - run: npm run generate
 
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/check-clean@v1
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/check-clean@v2
   with:
     paths: src/generated
 ```

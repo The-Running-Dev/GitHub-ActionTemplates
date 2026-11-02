@@ -15,7 +15,7 @@ steps:
     with:
       node-version: lts/*
 
-  - uses: The-Running-Dev/GitHub-ActionTemplates/actions/npm-publish@v1
+  - uses: The-Running-Dev/GitHub-ActionTemplates/actions/npm-publish@v2
     with:
       tarball: dist-package/*.tgz
 ```

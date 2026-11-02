@@ -8,7 +8,7 @@ It does not fail on failed tests unless asked, because the test step usually fai
 - run: npm test
 
 - if: always()
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/test-report@v1
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/test-report@v2
   with:
     results: test-results/*.xml
 ```

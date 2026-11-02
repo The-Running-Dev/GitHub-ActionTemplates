@@ -13,7 +13,7 @@ on:
         default: false
 
 # ...
-      - uses: The-Running-Dev/GitHub-ActionTemplates/actions/debug@v1
+      - uses: The-Running-Dev/GitHub-ActionTemplates/actions/debug@v2
         with:
           enabled: ${{ inputs.debug }}
 ```

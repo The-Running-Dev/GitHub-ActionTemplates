@@ -107,6 +107,7 @@ jobs:
       source: tests/fixtures/docusaurus
       deploy: false
       artifact-name: docs-template
+      upload-builds: true
 
   docs-node:
     name: Docs (node)
@@ -120,6 +121,7 @@ jobs:
       builder: node
       deploy: false
       artifact-name: docs-node
+      upload-builds: true
 
   pages:
     name: Pages
@@ -135,6 +137,7 @@ jobs:
       spa: true
       deploy: false
       artifact-name: pages-app
+      upload-builds: true
 
   # Checks the docs.yml and pages.yml sites; the name predates pages.yml.
   docs-check:
@@ -181,6 +184,7 @@ jobs:
         tests/fixtures/node-app/test-results/junit.xml
         tests/fixtures/node-app/coverage/lcov.info
       artifact-name: ci-node
+      artifact-required: true
 
   pwsh-ci:
     name: PowerShell CI
@@ -196,6 +200,7 @@ jobs:
       coverage: tests/fixtures/pwsh-module/Fixture.Module.psm1
       minimum-coverage: '80'
       artifact-name: ci-pester
+      diagnostic-policy: always
 
   # The fixture's version cannot match a tag of this repository.
   npm-package:
@@ -211,6 +216,7 @@ jobs:
       publish: false
       github-release: false
       artifact-name: ci-npm-package
+      upload-builds: true
 
   # Builds, tests and packs the fixture solution; publish is off. The fixture's version cannot
   # match a tag of this repository, so tag builds only test.
@@ -229,6 +235,8 @@ jobs:
       coverage: true
       minimum-coverage: '60'
       artifact-name: ci-dotnet
+      diagnostic-policy: always
+      upload-builds: true
       post-build: scripts/Write-DotnetDiagnosticFixture.ps1
       diagnostic-artifact-paths: .selftest/dotnet-diagnostics/
       diagnostic-artifact-name: ci-diagnostics
@@ -334,6 +342,9 @@ jobs:
 
       - name: Build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: 'false'
+          DOCKER_BUILD_RECORD_RETENTION_DAYS: '1'
         with:
           context: tests/fixtures/container
           build-args: FIXTURE_TEXT=from-build-arg
@@ -422,13 +433,41 @@ jobs:
           TIP_LATEST: ${{ toJSON(steps.tip-latest.outputs) }}
         run: ./scripts/Test-ContainerOutputs.ps1
 
+  # Successful validation and packing must not imply downloadable output.
+  node-minimal:
+    name: Node minimal storage
+    permissions:
+      contents: read
+    uses: $/.github/workflows/node-ci.yml
+    with:
+      working-directory: tests/fixtures/node-app
+      scripts: test
+      artifacts: tests/fixtures/node-app/test-results/junit.xml
+      artifact-name: minimal-node
+
+  dotnet-minimal:
+    name: .NET minimal storage
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: $/.github/workflows/dotnet.yml
+    with:
+      working-directory: tests/fixtures/dotnet-solution
+      dotnet-version: 10.0.x
+      pack: ${{ github.ref_type != 'tag' }}
+      publish: false
+      artifact-name: minimal-dotnet
+      package-artifact-name: minimal-nuget
+
   ci-check:
     name: CI artifacts
-    needs: [node-ci, pwsh-ci, npm-package, dotnet]
-    if: ${{ !cancelled() && needs.node-ci.result == 'success' && needs.pwsh-ci.result == 'success' && needs.npm-package.result != 'failure' && needs.dotnet.result == 'success' }}
+    needs: [node-ci, pwsh-ci, npm-package, dotnet, node-minimal, dotnet-minimal]
+    if: ${{ !cancelled() && needs.node-ci.result == 'success' && needs.pwsh-ci.result == 'success' && needs.npm-package.result != 'failure' && needs.dotnet.result == 'success' && needs.node-minimal.result == 'success' && needs.dotnet-minimal.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -445,3 +484,9 @@ jobs:
           EXPECT_PACKAGE: ${{ needs.npm-package.result == 'success' }}
           EXPECT_NUGET_PACKAGE: ${{ github.ref_type != 'tag' }}
         run: ./scripts/Test-CiArtifacts.ps1 -ExpectPackage:($env:EXPECT_PACKAGE -eq 'true') -ExpectNuGetPackage:($env:EXPECT_NUGET_PACKAGE -eq 'true')
+
+      - name: Check minimal storage
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/Test-MinimalArtifacts.ps1

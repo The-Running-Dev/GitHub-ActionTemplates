@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {}
     steps:
-      - uses: The-Running-Dev/GitHub-ActionTemplates/actions/needs-gate@v1
+      - uses: The-Running-Dev/GitHub-ActionTemplates/actions/needs-gate@v2
         with:
           needs: ${{ toJSON(needs) }}
 ```

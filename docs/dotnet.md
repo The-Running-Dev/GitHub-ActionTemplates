@@ -19,8 +19,8 @@ not committed.
 
 | Job | Runs |
 |---|---|
-| `Test (<os>)` | Checkout, .NET, feeds, `pre-build`, [`dotnet-test`](../actions/dotnet-test/README.md) (restore, build, test), test report, coverage gate, `post-build`, upload of the results. |
-| `Pack` | Checkout, .NET, version, feeds, `pre-build`, [`dotnet-pack`](../actions/dotnet-pack/README.md), upload of the packages. |
+| `Test (<os>)` | Checkout, .NET, feeds, `pre-build`, [`dotnet-test`](../actions/dotnet-test/README.md) (restore, build, test), test report, coverage gate, `post-build`, policy-controlled optional diagnostic upload. |
+| `Pack` | Checkout, .NET, version, feeds, `pre-build`, [`dotnet-pack`](../actions/dotnet-pack/README.md), required publishing transfer or opted-in package upload. |
 | `Publish` | [`nuget-push`](../actions/nuget-push/README.md) with the packages from `Pack`, after NuGet/login for trusted publishing. One at a time per repository. |
 | `Post-publish` | `post-publish` scripts, with `PACKAGE_VERSION`. |
 | `GitHub release` | [`github-release`](../actions/github-release/README.md): notes from the tag's CHANGELOG section, packages attached. Skipped when `Publish` failed. |
@@ -62,7 +62,7 @@ jobs:
       contents: write
       packages: write
       id-token: write
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/dotnet.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/dotnet.yml@v2
     with:
       os: '["ubuntu-latest", "windows-latest"]'
       coverage: true
@@ -86,6 +86,10 @@ To release: set the version, add the CHANGELOG section, merge, then push the tag
 
 | Name | Default | Description |
 |---|---|---|
+| `diagnostic-policy` | `failure` | Optional reports/diagnostics: `never`, `failure`, `always`. In-job reports and coverage gates still run. |
+| `upload-builds` | `false` | Keep an optional downloadable package without a publishing consumer; normally manual opt-in. |
+| `build-retention-days` | `1` | Optional package lifetime, 1–90 days. |
+| `handoff-retention-days` | `1` | Required publishing/release package lifetime, 1–90 days; allow for delayed jobs. |
 | `os` | `["ubuntu-latest"]` | JSON list of runners to build and test on. |
 | `dotnet-version` | | SDK versions for actions/setup-dotnet, one per line. Empty uses `global-json-file`, else the SDK on the runner. |
 | `global-json-file` | `global.json` | global.json that pins the SDK, used when it exists. |
@@ -104,9 +108,9 @@ To release: set the version, add the CHANGELOG section, merge, then push the tag
 | `pre-build` | | Repository scripts run before the restore in `Test` and `Pack`, by path from the repository root, one per line. |
 | `post-build` | | Repository scripts run after the tests. |
 | `artifact-name` | `dotnet-test` | Name prefix of the test results artifact; the runner is appended. |
-| `diagnostic-artifact-paths` | empty (disabled) | Optional diagnostic files or globs, one per line, relative to the repository root (independent of `working-directory`). Uploads after failure too, unless cancelled; independent of TRX/coverage outputs. Stage an allowlisted bundle first. |
+| `diagnostic-artifact-paths` | empty (disabled) | Optional diagnostic files or globs, one per line, relative to the repository root (independent of `working-directory`). Failure-only by default, unless cancelled; independent of TRX/coverage outputs. Stage an allowlisted bundle first. |
 | `diagnostic-artifact-name` | `dotnet-diagnostics` | Name prefix of the separate diagnostic artifact; the runner is appended. |
-| `retention-days` | `7` | Days to keep the artifacts. |
+| `retention-days` | `3` | Optional test-result and diagnostic lifetime, 1–90 days. Package transfers use `handoff-retention-days`. |
 | `pack` | `false` | Pack the NuGet packages after the tests pass, and publish them per `publish`. |
 | `pack-os` | first of `os` | Runner that packs. |
 | `pack-args` | | Extra `dotnet pack` arguments. |
@@ -148,17 +152,15 @@ For a post-build probe that writes a dedicated, safe evidence bundle:
       retention-days: 7
 ```
 
-The diagnostic upload runs after a failed build, test or post-build step as well as after
-success, without depending on test-result outputs. It does not turn a failed step into success.
-Missing paths produce an upload warning; partial bundles are uploaded as available. Cancelled
-jobs and runner loss cannot guarantee collection. Hidden files are excluded. The existing test
-results upload and all consumers that leave `diagnostic-artifact-paths` empty behave as before.
+The diagnostic upload runs after a failed build, test or post-build step, independently of
+test-result outputs. Set `diagnostic-policy: always` to keep successful probe evidence too.
+Optional upload failures appear in the summary without failing successful validation.
+Missing paths produce a warning; partial bundles are uploaded as available. Cancelled jobs
+and runner loss cannot guarantee collection. Hidden files are excluded.
 
-The caller is responsible for staging only safe files. Do not point this input at a whole smoke
-tree or workspace containing control files, credentials, signing keys, packages or user data.
-The retention setting applies to diagnostics, test results and packages; the default is 7 days.
-When consuming this new input before a release moves `v1`, pin the full implementation commit
-SHA. A `v1` or exact release pin must already contain the input; do not pass it to an older tag.
+Stage only safe files. Do not point diagnostics at a whole workspace containing credentials,
+signing keys, packages or user data. Diagnostics default to three days; required package
+transfers have a separate one-day default. See [artifact storage](artifact-storage.md).
 
 ## Outputs
 
@@ -167,3 +169,5 @@ SHA. A `v1` or exact release pin must already contain the input; do not pass it 
 | `version` | Package version that was packed, empty without `pack`. |
 | `published` | `true` when the packages were published. |
 | `release-url` | GitHub release URL, empty when no release was created. |
+
+See [artifact storage and v2 migration](artifact-storage.md) for defaults, required consumers and expiry.

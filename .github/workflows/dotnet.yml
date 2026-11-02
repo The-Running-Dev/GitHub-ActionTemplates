@@ -13,6 +13,22 @@ name: .NET
 on:
   workflow_call:
     inputs:
+      diagnostic-policy:
+        description: 'Optional test/coverage/diagnostic uploads: never, failure or always. Reports and validation still run.'
+        type: string
+        default: failure
+      upload-builds:
+        description: Keep an optional downloadable package even without a publishing consumer. Normally passed from a manual-dispatch input.
+        type: boolean
+        default: false
+      build-retention-days:
+        description: Days to keep explicitly requested optional packages (1-90).
+        type: number
+        default: 1
+      handoff-retention-days:
+        description: Days to keep packages required by publishing or a GitHub release (1-90); allow for approvals and delayed jobs.
+        type: number
+        default: 1
       os:
         description: JSON list of runners to build and test on, for example `'["ubuntu-latest", "windows-latest"]'`.
         type: string
@@ -89,7 +105,7 @@ on:
         type: string
         default: dotnet-test
       diagnostic-artifact-paths:
-        description: Optional diagnostic files or globs from the repository root, one per line. Uploaded after failure too; callers must stage only safe evidence. Empty disables this upload.
+        description: Optional diagnostic files or globs from the repository root, one per line. Controlled by diagnostic-policy; callers must stage only safe evidence. Empty disables this upload.
         type: string
         default: ''
       diagnostic-artifact-name:
@@ -97,9 +113,9 @@ on:
         type: string
         default: dotnet-diagnostics
       retention-days:
-        description: Days to keep test results, optional diagnostics and packages artifacts.
+        description: Days to keep optional test results and diagnostics (1-90).
         type: number
-        default: 7
+        default: 3
       pack:
         description: Pack the NuGet packages after the tests pass, and publish them per `publish`.
         type: boolean
@@ -303,8 +319,20 @@ jobs:
         with:
           scripts: ${{ inputs.post-build }}
 
+      - name: diagnostic-policy
+        id: diagnostic-policy
+        if: ${{ !cancelled() }}
+        uses: $/actions/artifact-policy
+        with:
+          policy: ${{ inputs.diagnostic-policy }}
+          required: false
+          status: ${{ job.status }}
+          retention-days: ${{ inputs.retention-days }}
+
       - name: Upload
-        if: ${{ !cancelled() && steps.test.outputs.results != '' }}
+        id: upload-1
+        if: ${{ !cancelled() && steps.diagnostic-policy.outputs.upload == 'true' && steps.test.outputs.results != '' }}
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ inputs.artifact-name }}-${{ matrix.os }}
@@ -314,8 +342,17 @@ jobs:
           retention-days: ${{ inputs.retention-days }}
           if-no-files-found: warn
 
+      - name: Artifact upload result
+        if: ${{ !cancelled() && steps.upload-1.outcome != 'skipped' && steps.upload-1.outcome != '' }}
+        uses: $/actions/artifact-result
+        with:
+          outcome: ${{ steps.upload-1.outcome }}
+          required: false
+
       - name: Upload diagnostics
-        if: ${{ !cancelled() && inputs.diagnostic-artifact-paths != '' }}
+        id: upload-2
+        if: ${{ !cancelled() && steps.diagnostic-policy.outputs.upload == 'true' && inputs.diagnostic-artifact-paths != '' }}
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ inputs.diagnostic-artifact-name }}-${{ matrix.os }}
@@ -323,6 +360,13 @@ jobs:
           retention-days: ${{ inputs.retention-days }}
           if-no-files-found: warn
           include-hidden-files: false
+
+      - name: Artifact upload result
+        if: ${{ !cancelled() && steps.upload-2.outcome != 'skipped' && steps.upload-2.outcome != '' }}
+        uses: $/actions/artifact-result
+        with:
+          outcome: ${{ steps.upload-2.outcome }}
+          required: false
 
   pack:
     name: Pack
@@ -396,13 +440,33 @@ jobs:
           args: ${{ inputs.pack-args }}
           enable-windows-targeting: ${{ inputs.enable-windows-targeting }}
 
+      - name: package-policy
+        id: package-policy
+        uses: $/actions/artifact-policy
+        with:
+          policy: ${{ inputs.upload-builds && 'always' || 'never' }}
+          required: ${{ (inputs.publish && (steps.context.outputs.is-tag == 'true' || (inputs.publish-prereleases && steps.context.outputs.is-default-branch == 'true'))) || (inputs.github-release && steps.context.outputs.is-tag == 'true') }}
+          status: ${{ job.status }}
+          retention-days: ${{ inputs.build-retention-days }}
+          required-retention-days: ${{ inputs.handoff-retention-days }}
+
       - name: Upload
+        id: upload-3
+        if: steps.package-policy.outputs.upload == 'true'
+        continue-on-error: ${{ steps.package-policy.outputs.required != 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ inputs.package-artifact-name }}
           path: ${{ steps.pack.outputs.destination }}
-          retention-days: ${{ inputs.retention-days }}
+          retention-days: ${{ steps.package-policy.outputs.retention-days }}
           if-no-files-found: error
+
+      - name: Artifact upload result
+        if: ${{ !cancelled() && steps.upload-3.outcome != 'skipped' && steps.upload-3.outcome != '' }}
+        uses: $/actions/artifact-result
+        with:
+          outcome: ${{ steps.upload-3.outcome }}
+          required: ${{ steps.package-policy.outputs.required }}
 
   publish:
     name: Publish

@@ -6,6 +6,25 @@ section for its version.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-02
+
+### Changed
+- **Breaking defaults:** successful validation no longer uploads optional package/site builds
+  or test diagnostics. Packing, tests, reports and coverage validation still run.
+- Diagnostics default to failure-only with three-day retention; explicit optional builds
+  default to one day. Node artifact paths require a policy or `artifact-required`.
+- Required registry, GitHub-release-only, prerelease, Pages and tested-image transfers remain
+  enforced with a separate one-day default; callers can allow a longer approval window.
+- Docker build records are off by default on both container paths and the self-test.
+
+### Added
+- Shared artifact policy and outcome actions, explicit lifetimes and manual-download controls.
+- Migration guidance, policy/transport failure tests and successful minimal-storage self-tests.
+
+### Fixed
+- Optional storage failures no longer invalidate successful build/test validation, and missing
+  downloads are reported in the job summary. Required transfer failures still block consumers.
+
 ## [1.1.0] - 2026-10-31
 
 ### Added
