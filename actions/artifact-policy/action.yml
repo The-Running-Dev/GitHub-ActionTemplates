@@ -1,0 +1,44 @@
+name: Artifact policy
+description: Decide whether an optional or required artifact should be uploaded and how long to retain it.
+author: The-Running-Dev
+
+inputs:
+  policy:
+    description: 'Optional upload policy: never, failure or always. Required transfers are independent.'
+    default: never
+  required:
+    description: Whether a downstream consumer requires this artifact after a successful producer.
+    default: 'false'
+  status:
+    description: Producer job status, passed from job.status before the upload.
+    default: success
+  retention-days:
+    description: Optional artifact retention, from 1 to 90 days.
+    default: '1'
+  required-retention-days:
+    description: Required transfer retention, from 1 to 90 days.
+    default: '1'
+
+outputs:
+  upload:
+    description: Whether this producer should upload.
+    value: ${{ steps.policy.outputs.upload }}
+  required:
+    description: Whether upload failure must fail the producer.
+    value: ${{ steps.policy.outputs.required }}
+  retention-days:
+    description: Selected artifact lifetime.
+    value: ${{ steps.policy.outputs.retention-days }}
+
+runs:
+  using: composite
+  steps:
+    - id: policy
+      shell: pwsh
+      env:
+        INPUT_POLICY: ${{ inputs.policy }}
+        INPUT_REQUIRED: ${{ inputs.required }}
+        INPUT_STATUS: ${{ inputs.status }}
+        INPUT_RETENTION_DAYS: ${{ inputs.retention-days }}
+        INPUT_REQUIRED_RETENTION_DAYS: ${{ inputs.required-retention-days }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH artifact-policy.ps1)'

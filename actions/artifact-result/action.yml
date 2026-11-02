@@ -1,0 +1,18 @@
+name: Artifact result
+description: Report an upload outcome without hiding required transfer failures.
+author: The-Running-Dev
+inputs:
+  outcome:
+    description: The upload step's outcome, before continue-on-error is applied.
+    required: true
+  required:
+    description: Whether a downstream consumer requires the artifact.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - shell: pwsh
+      env:
+        INPUT_OUTCOME: ${{ inputs.outcome }}
+        INPUT_REQUIRED: ${{ inputs.required }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH artifact-result.ps1)'

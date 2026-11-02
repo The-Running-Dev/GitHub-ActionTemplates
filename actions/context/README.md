@@ -6,7 +6,7 @@ Turns the run context into plain outputs so later steps and jobs do not repeat
 
 ```yaml
 - id: context
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/context@v1
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/context@v2
 
 - if: steps.context.outputs.should-publish == 'true'
   run: docker push "$IMAGE:$SHORT_SHA"

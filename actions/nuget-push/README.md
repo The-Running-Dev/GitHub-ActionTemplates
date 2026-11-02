@@ -15,7 +15,7 @@ steps:
     with:
       user: ${{ vars.NUGET_USER }}
 
-  - uses: The-Running-Dev/GitHub-ActionTemplates/actions/nuget-push@v1
+  - uses: The-Running-Dev/GitHub-ActionTemplates/actions/nuget-push@v2
     with:
       packages: dist-nuget/*.nupkg
       source: nuget.org

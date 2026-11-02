@@ -14,6 +14,18 @@ name: Container
 on:
   workflow_call:
     inputs:
+      upload-build-records:
+        description: Upload optional Docker build records. Off by default to avoid hidden artifact storage.
+        type: boolean
+        default: false
+      build-record-retention-days:
+        description: Days to keep opted-in Docker build records.
+        type: number
+        default: 1
+      handoff-retention-days:
+        description: Days to keep the tested image required by Publish; allow for environment approvals.
+        type: number
+        default: 1
       context:
         description: Build context, relative to the repository root.
         type: string
@@ -316,6 +328,9 @@ jobs:
       # Loaded into the runner's Docker so the smoke test runs the image that gets pushed.
       - name: Build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: ${{ inputs.upload-build-records }}
+          DOCKER_BUILD_RECORD_RETENTION_DAYS: ${{ inputs.build-record-retention-days }}
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
@@ -392,7 +407,7 @@ jobs:
         with:
           name: ${{ inputs.artifact-name || format('image-{0}', env.GHAT_CACHE_SCOPE) }}
           path: ${{ runner.temp }}/ghat-image
-          retention-days: 1
+          retention-days: ${{ inputs.handoff-retention-days }}
           if-no-files-found: error
 
   publish:
@@ -489,6 +504,9 @@ jobs:
         id: build
         if: steps.gate.outputs.publish == 'true' && env.GHAT_MULTI == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: ${{ inputs.upload-build-records }}
+          DOCKER_BUILD_RECORD_RETENTION_DAYS: ${{ inputs.build-record-retention-days }}
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}

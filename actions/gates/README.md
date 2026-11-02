@@ -8,7 +8,7 @@ whenever the file exists. See
 [docs/gates.md](../../docs/gates.md) for the file and how the gates are derived.
 
 ```yaml
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/gates@v1
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/gates@v2
 ```
 
 With `write: true` it writes the file instead of checking it. A check that fails prints the

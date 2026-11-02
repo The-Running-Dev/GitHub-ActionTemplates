@@ -5,8 +5,8 @@ publishing projects. The goal is that a consuming repository's workflow is a few
 call a template, with every decision (version, publish or not, image name) made the same way
 in every repository.
 
-> **Status: 0.x.** The workflows and actions below are usable now; the remaining work is in
-> [docs/PLAN.md](docs/PLAN.md). Inputs may still change before `v1.0.0`.
+> **v2:** successful validation does not upload optional full builds by default.
+> Required publishing/deployment transfers remain enabled. See [artifact storage and migration](docs/artifact-storage.md).
 
 ## Workflows
 
@@ -24,7 +24,7 @@ in every repository.
 jobs:
   docs:
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v2
 ```
 
 Complete caller workflows are in [examples/](examples).
@@ -33,6 +33,8 @@ Complete caller workflows are in [examples/](examples).
 
 | Action | What it does |
 |---|---|
+| [`artifact-policy`](actions/artifact-policy/README.md) | Selects optional uploads separately from required transfers, with bounded retention. |
+| [`artifact-result`](actions/artifact-result/README.md) | Reports unavailable downloads and enforces required transfer failures. |
 | [`version`](actions/version/README.md) | Computes a semantic version from git tags, a manifest file, the run number, or GitVersion. |
 | [`assert-tag-version`](actions/assert-tag-version/README.md) | Fails a tag build when the tag and the manifest version differ. |
 | [`context`](actions/context/README.md) | Normalises the run context: branch, slug, PR, tag, publish decision, image name. |
@@ -81,10 +83,10 @@ jobs:
           persist-credentials: false
 
       - id: version
-        uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v1
+        uses: The-Running-Dev/GitHub-ActionTemplates/actions/version@v2
 
       - id: context
-        uses: The-Running-Dev/GitHub-ActionTemplates/actions/context@v1
+        uses: The-Running-Dev/GitHub-ActionTemplates/actions/context@v2
 
       - run: echo "Building ${{ steps.version.outputs.version }}"
 

@@ -56,7 +56,7 @@ jobs:
       packages: write
       id-token: write
       attestations: write
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/container.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/container.yml@v2
     with:
       tags: short-sha version minor major latest
       fetch-depth: 0
@@ -115,6 +115,9 @@ The container log is printed when the container is stopped, pass or fail.
 
 | Name | Default | Description |
 |---|---|---|
+| `upload-build-records` | `false` | Opt into optional Docker build-record artifacts on both build paths. |
+| `build-record-retention-days` | `1` | Lifetime of opted-in Docker records. |
+| `handoff-retention-days` | `1` | Required tested-image archive lifetime; allow for approval delays. |
 | `context` | `.` | Build context, relative to the repository root. |
 | `dockerfile` | | Dockerfile from the repository root. Empty uses `<context>/Dockerfile`. |
 | `target` | | Build stage to stop at. |
@@ -182,3 +185,5 @@ The container log is printed when the container is stopped, pass or fail.
 | `digest` | Pushed digest. |
 | `tags` | Pushed references, one per line. |
 | `deployed` | `true` when the deploy job finished. |
+
+See [artifact storage and v2 migration](artifact-storage.md) for defaults, required consumers and expiry.

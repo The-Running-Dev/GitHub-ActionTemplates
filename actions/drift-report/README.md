@@ -5,7 +5,7 @@ is behind the latest release. [`drift.yml`](../../docs/drift.md) runs it every w
 repository.
 
 ```yaml
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/drift-report@v1
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/drift-report@v2
   with:
     token: ${{ secrets.DRIFT_TOKEN }}
     report: drift-report.json

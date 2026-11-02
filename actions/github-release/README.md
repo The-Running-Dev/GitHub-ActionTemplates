@@ -14,7 +14,7 @@ steps:
     with:
       persist-credentials: false
 
-  - uses: The-Running-Dev/GitHub-ActionTemplates/actions/github-release@v1
+  - uses: The-Running-Dev/GitHub-ActionTemplates/actions/github-release@v2
     with:
       files: dist/*.zip
 ```

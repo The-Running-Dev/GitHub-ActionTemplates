@@ -29,7 +29,7 @@ jobs:
   ci:
     permissions:
       contents: read
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/node-ci.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/node-ci.yml@v2
     with:
       node-versions: '["20", "22", "24"]'
       scripts: lint test
@@ -53,7 +53,7 @@ does not change when the matrix does, and it fails when any matrix job fails.
 6. [`coverage-gate`](../actions/coverage-gate/README.md) when `coverage-reports` or
    `minimum-coverage` is set.
 7. [`check-clean`](../actions/check-clean/README.md) when `check-clean` is `true`.
-8. Upload of `artifacts`, also after a failure, as `<artifact-name>-<os>-node-<version>`.
+8. Policy-controlled upload of `artifacts`, as `<artifact-name>-<os>-node-<version>`.
 
 The test framework writes the result and coverage files; the workflow only reads them. With
 the Node test runner, for example:
@@ -76,6 +76,10 @@ Vitest (`--reporter=junit`, `--coverage.reporter=cobertura`) and Jest (`jest-jun
 
 | Name | Default | Description |
 |---|---|---|
+| `artifact-policy` | `never` | Optional upload policy: `never`, `failure`, `always`. Setting paths alone does not upload. |
+| `artifact-required` | `false` | A downstream job requires this output; successful producers must upload, independently of optional policy. |
+| `retention-days` | `1` | Optional output lifetime, 1–90 days. Set `3` for failure diagnostics. |
+| `handoff-retention-days` | `1` | Required output lifetime, 1–90 days. |
 | `working-directory` | `.` | Node project folder, relative to the repository root. |
 | `node-versions` | `'["lts/*"]'` | Node versions as a JSON list. |
 | `os` | `'["ubuntu-latest"]'` | Runner labels as a JSON list. |
@@ -93,7 +97,7 @@ Vitest (`--reporter=junit`, `--coverage.reporter=cobertura`) and Jest (`jest-jun
 | `check-clean-paths` | whole repository | Paths `check-clean` looks at, one per line. |
 | `cache` | | setup-node dependency cache, `npm`. Empty turns caching off. |
 | `cache-dependency-path` | | Lockfile for the cache key, from the repository root. Needed when the project is not at the root. |
-| `artifacts` | | Files to upload, from the repository root, one per line. |
+| `artifacts` | | Allowlisted files from the repository root, one per line; enable a policy or required transfer. |
 | `artifact-name` | `node-ci` | Artifact name prefix; the OS and Node version are appended. |
 | `gates-file` | `.github/gates.json` | [Gates file](gates.md) checked against the workflows when it exists; empty turns the check off. |
 | `fetch-depth` | `1` | Commits to fetch; 0 fetches all history. |
@@ -106,3 +110,5 @@ The workflow has no outputs.
 ## Permissions
 
 `contents: read`.
+
+See [artifact storage and v2 migration](artifact-storage.md) for defaults, required consumers and expiry.

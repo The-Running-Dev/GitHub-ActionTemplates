@@ -860,4 +860,37 @@ function Merge-CoberturaReport {
     [pscustomobject]@{ Path = $Destination; Reports = $Path.Count; Covered = $covered; Total = $valid }
 }
 
+function Get-ArtifactPolicy {
+    <#
+    .SYNOPSIS
+    Separates optional uploads from successful producers' required transfers.
+    #>
+    [CmdletBinding()]
+    param(
+        [ValidateSet('never', 'failure', 'always')][string] $Policy = 'never',
+        [bool] $Required = $false,
+        [ValidateSet('success', 'failure', 'cancelled', 'skipped')][string] $Status = 'success',
+        [string] $RetentionDays = '1',
+        [string] $RequiredRetentionDays = '1'
+    )
+
+    foreach ($value in @($RetentionDays, $RequiredRetentionDays)) {
+        $days = 0
+        if ($value -notmatch '^[1-9][0-9]*$' -or -not [int]::TryParse($value, [ref] $days) -or $days -gt 90) {
+            throw 'Artifact retention must be an integer from 1 to 90 days.'
+        }
+    }
+    $upload = switch ($Status) {
+        'success' { $Required -or $Policy -eq 'always' }
+        'failure' { -not $Required -and $Policy -in @('failure', 'always') }
+        default { $false }
+    }
+    [pscustomobject]@{
+        Policy = $Policy
+        Upload = [bool] $upload
+        Required = $Required
+        RetentionDays = [int] $(if ($Required) { $RequiredRetentionDays } else { $RetentionDays })
+    }
+}
+
 Export-ModuleMember -Function *-*

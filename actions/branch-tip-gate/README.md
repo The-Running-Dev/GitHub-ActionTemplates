@@ -7,12 +7,12 @@ the older image; this gate stops it. Tag builds always pass: a tag points at one
 
 ```yaml
 - id: tip
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/branch-tip-gate@v1
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/branch-tip-gate@v2
   with:
     require-tip: latest
 
 - if: steps.tip.outputs.publish == 'true'
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-meta@v1
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/image-meta@v2
   with:
     image: ghcr.io/${{ github.repository }}
     latest: ${{ steps.tip.outputs.latest }}

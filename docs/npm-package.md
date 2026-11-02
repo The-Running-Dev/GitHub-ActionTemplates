@@ -15,7 +15,7 @@ The version comes from package.json ([`version`](../actions/version/README.md) w
 
 | Job | Runs |
 |---|---|
-| `Build` | Checkout, Node, version, `pre-build`, install and `scripts`, `post-build`, [`npm-pack`](../actions/npm-pack/README.md), upload of the tarball. |
+| `Build` | Checkout, Node, version, `pre-build`, install and `scripts`, `post-build`, [`npm-pack`](../actions/npm-pack/README.md), required publishing transfer or opted-in tarball upload. |
 | `Publish` | [`npm-publish`](../actions/npm-publish/README.md) with the tarball from `Build`. |
 | `GitHub release` | [`github-release`](../actions/github-release/README.md): notes from the tag's CHANGELOG section, tarball attached. Skipped when `Publish` failed. |
 
@@ -50,7 +50,7 @@ jobs:
       contents: write
       packages: write
       id-token: write
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/npm-package.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/npm-package.yml@v2
     with:
       access: public
     secrets:
@@ -68,6 +68,9 @@ tag (`git tag v1.2.3 && git push origin v1.2.3`).
 
 | Name | Default | Description |
 |---|---|---|
+| `upload-builds` | `false` | Keep an optional tarball without a publishing consumer; normally manual opt-in. |
+| `build-retention-days` | `1` | Optional tarball lifetime, 1–90 days. |
+| `handoff-retention-days` | `1` | Required publishing/release transfer lifetime, 1–90 days. |
 | `working-directory` | `.` | Package folder, relative to the repository root. |
 | `node-version` | `lts/*` | Node version for the build and the publish. Trusted publishing needs npm 11.5.1+. |
 | `package-manager` | detected | `npm`, `pnpm` or `yarn`. Empty detects it from the lockfile. |
@@ -103,3 +106,5 @@ tag (`git tag v1.2.3 && git push origin v1.2.3`).
 | `version` | Package version that was built. |
 | `published` | `true` when the package was published. |
 | `release-url` | GitHub release URL, empty when no release was created. |
+
+See [artifact storage and v2 migration](artifact-storage.md) for defaults, required consumers and expiry.

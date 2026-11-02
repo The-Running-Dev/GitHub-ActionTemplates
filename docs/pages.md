@@ -32,7 +32,7 @@ permissions: {}
 jobs:
   pages:
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v2
 ```
 
 The caller must grant all three permissions even on pull requests, where the deploy job is
@@ -64,6 +64,9 @@ export default defineConfig({ base: process.env.PAGES_BASE_PATH ?? '/' });
 
 | Name | Default | Description |
 |---|---|---|
+| `upload-builds` | `false` | Keep an optional preview download when deployment does not need an artifact. |
+| `retention-days` | `1` | Optional preview lifetime, 1–90 days. |
+| `handoff-retention-days` | `1` | Required Pages deployment artifact lifetime, 1–90 days. |
 | `working-directory` | `.` | Node project folder, relative to the repository root. |
 | `node-version` | `lts/*` | Node version for `actions/setup-node`, in the build and for `post-deploy` scripts. |
 | `package-manager` | from the lockfile | `npm`, `pnpm` or `yarn`. |
@@ -79,7 +82,7 @@ export default defineConfig({ base: process.env.PAGES_BASE_PATH ?? '/' });
 | `post-build` | | Repository scripts run from the repository root after the build, by path, one per line. |
 | `artifact` | | Artifact from an earlier job of the calling workflow, downloaded before the build and again before `post-deploy`. |
 | `artifact-path` | `.` | Folder the `artifact` is downloaded into. |
-| `deploy` | `true` | `false` only builds and uploads the artifact. |
+| `deploy` | `true` | `false` builds and validates; use `upload-builds` for a preview download. |
 | `require-tip` | `true` | Skip the deployment when the commit is no longer the branch head ([`branch-tip-gate`](../actions/branch-tip-gate/README.md)). |
 | `post-deploy` | | Repository scripts run after the deployment, by path, one per line, with the site address in `PAGES_URL`, Node and the downloaded `artifact`. |
 | `cache` | | `actions/setup-node` dependency cache, `npm`. Empty turns caching off. |
@@ -146,7 +149,7 @@ jobs:
   pages:
     needs: build
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/pages.yml@v2
     with:
       artifact: site
       artifact-path: site
@@ -162,3 +165,5 @@ jobs:
   `post-build` scripts.
 - The deploy job uses the `pages-deploy` concurrency group rather than `pages`, which the GitHub
   starter workflow puts at the caller's workflow level and would make the job wait on itself.
+
+See [artifact storage and v2 migration](artifact-storage.md) for defaults, required consumers and expiry.

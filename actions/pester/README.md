@@ -7,14 +7,14 @@ or a throwing `BeforeAll`), and when no tests ran at all.
 
 ```yaml
 - id: pester
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/pester@v1
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/pester@v2
   with:
     path: tests
     coverage: src
     exclude-tags: Integration
 
 - if: always() && steps.pester.outputs.results != ''
-  uses: The-Running-Dev/GitHub-ActionTemplates/actions/test-report@v1
+  uses: The-Running-Dev/GitHub-ActionTemplates/actions/test-report@v2
   with:
     results: ${{ steps.pester.outputs.results }}
 ```

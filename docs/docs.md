@@ -33,7 +33,7 @@ permissions: {}
 jobs:
   docs:
     permissions: { contents: read, pages: write, id-token: write }
-    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v1
+    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/docs.yml@v2
 ```
 
 The caller must grant all three permissions even on pull requests, where the deploy job is
@@ -55,6 +55,9 @@ listed in [`actions/docs-build/template/package.json`](../actions/docs-build/tem
 
 | Name | Default | Description |
 |---|---|---|
+| `upload-builds` | `false` | Keep an optional preview download when deployment does not need an artifact. |
+| `retention-days` | `1` | Optional preview lifetime, 1–90 days. |
+| `handoff-retention-days` | `1` | Required Pages deployment artifact lifetime, 1–90 days. |
 | `source` | `docs` | Documentation folder, relative to the repository root. |
 | `builder` | `template` | `template` (bundled or custom Docusaurus template) or `node` (the folder's own project). |
 | `template` | bundled | Template git URL, optionally `<url>#<branch>`. The repository must be readable without credentials. |
@@ -70,7 +73,7 @@ listed in [`actions/docs-build/template/package.json`](../actions/docs-build/tem
 | `node-dependencies` | | Local Node projects `node-project` depends on, one per line; each is installed and built first. |
 | `browser` | `false` | `true` provides a system Chromium or Chrome to `node-project` for browser tests. |
 | `post-build` | | Repository scripts run from the repository root after the build, by path, one per line. |
-| `deploy` | `true` | `false` only builds and uploads the artifact. |
+| `deploy` | `true` | `false` builds and validates; use `upload-builds` for a preview download. |
 | `image` | build-agent, by digest | Container image for the build job. It needs PowerShell 7, git and Node, and `build` for the `template` builder. |
 | `runs-on` | `ubuntu-latest` | Runner for the build job; it must run Linux containers. |
 | `utility-runs-on` | `ubuntu-latest` | Runner for the Deploy job. |
@@ -93,7 +96,7 @@ The build job runs, in order, only the steps whose inputs are set:
 3. The documentation build.
 4. `node-project`: install the dependencies and the project, then run `node-scripts`.
 5. `post-build`: repository scripts, for example a check of the built site.
-6. Upload of `output` as the Pages artifact.
+6. Upload of `output` when deployment needs it or `upload-builds` is enabled.
 
 ## Repository scripts
 
@@ -147,3 +150,5 @@ A site with its own `package.json` in `website/` that builds to `website/dist`:
   `DOCS_BASE_URL` to do the same.
 - Pull request builds use the default `https://<owner>.github.io/<repository>/` URL.
 - The deploy job runs in the `github-pages` environment, one deployment at a time.
+
+See [artifact storage and v2 migration](artifact-storage.md) for defaults, required consumers and expiry.

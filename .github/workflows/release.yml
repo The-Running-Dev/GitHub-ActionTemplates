@@ -3,7 +3,7 @@ name: Release
 # Push a vX.Y.Z tag on a commit that is already on the default branch:
 #   git tag v1.2.3 && git push origin v1.2.3
 # The release notes come from the matching CHANGELOG.md section, and the major tag
-# (v1) is moved to the same commit so `@v1` consumers pick up the release.
+# (v<major>) is moved to the same commit so callers of that major pick up the release.
 
 on:
   push:
@@ -26,6 +26,7 @@ jobs:
     # publish and release jobs need these even when they are skipped.
     permissions:
       contents: write
+      actions: read
       packages: write
       pages: write
       id-token: write

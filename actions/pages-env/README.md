@@ -4,7 +4,7 @@ Exports the GitHub Pages address of the repository, and build variables from the
 rest of the job. [`pages.yml`](../../docs/pages.md) runs it before the build.
 
 ```yaml
-- uses: The-Running-Dev/GitHub-ActionTemplates/actions/pages-env@v1
+- uses: The-Running-Dev/GitHub-ActionTemplates/actions/pages-env@v2
   with:
     env: VITE_API_URL=${{ vars.API_URL }}
     secret-env: VITE_KEY=${{ secrets.KEY }}
