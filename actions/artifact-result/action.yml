@@ -15,4 +15,4 @@ runs:
       env:
         INPUT_OUTCOME: ${{ inputs.outcome }}
         INPUT_REQUIRED: ${{ inputs.required }}
-      run: '& "${{ github.action_path }}/artifact-result.ps1"'
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH artifact-result.ps1)'

@@ -41,4 +41,4 @@ runs:
         INPUT_STATUS: ${{ inputs.status }}
         INPUT_RETENTION_DAYS: ${{ inputs.retention-days }}
         INPUT_REQUIRED_RETENTION_DAYS: ${{ inputs.required-retention-days }}
-      run: '& "${{ github.action_path }}/artifact-policy.ps1"'
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH artifact-policy.ps1)'
