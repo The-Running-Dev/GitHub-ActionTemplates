@@ -59,6 +59,7 @@ Complete caller workflows are in [examples/](examples).
 | [`branch-tip-gate`](actions/branch-tip-gate/README.md) | Holds back a branch build that is no longer the branch head, so an older run cannot overwrite `latest`. |
 | [`image-push`](actions/image-push/README.md) | Pushes every tag of a local image, reports the digest and optionally signs it with cosign. |
 | [`webhook-deploy`](actions/webhook-deploy/README.md) | Calls a redeploy webhook with retries, then waits until a health URL serves the new build. |
+| [`portainer-deploy`](actions/portainer-deploy/README.md) | Pins a Portainer Git stack's image variable to a digest, redeploys it, then waits until the site reports the commit. |
 | [`nuget-feed`](actions/nuget-feed/README.md) | Adds private NuGet feeds and their credentials to the NuGet config, with the token read from the environment. |
 | [`dotnet-test`](actions/dotnet-test/README.md) | Restores, builds and tests a .NET solution, with TRX results and merged coverlet coverage. |
 | [`dotnet-pack`](actions/dotnet-pack/README.md) | Packs a .NET solution into NuGet packages with a computed version, in a deterministic CI build. |

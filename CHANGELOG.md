@@ -6,6 +6,14 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `portainer-deploy` action: pins a Portainer Git stack's image variable to a digest, redeploys
+  it with a pull (through Cloudflare Access when configured) and waits until the health endpoint
+  reports the commit.
+- `container.yml` deploys with `portainer-deploy` when the `PORTAINER_STACK_ID` variable is set,
+  with the optional `PORTAINER_API_KEY`, `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` secrets.
+  Without it the webhook deploy runs as before.
+
 ## [2.0.0] - 2026-11-02
 
 ### Changed

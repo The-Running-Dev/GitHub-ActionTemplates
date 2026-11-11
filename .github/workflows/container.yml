@@ -163,7 +163,7 @@ on:
         type: string
         default: ''
       deploy:
-        description: After a push, call the `DEPLOY_WEBHOOK_URL` secret and wait for `health-url`.
+        description: After a push, redeploy the Portainer stack named by the `PORTAINER_*` variables, or call the `DEPLOY_WEBHOOK_URL` secret and wait for `health-url`.
         type: boolean
         default: false
       deploy-environment:
@@ -234,6 +234,15 @@ on:
         required: false
       DEPLOY_TOKEN:
         description: Token the `post-deploy` scripts get as `DEPLOY_TOKEN`.
+        required: false
+      PORTAINER_API_KEY:
+        description: Portainer API key for the Portainer deploy (when the `PORTAINER_STACK_ID` variable is set).
+        required: false
+      CF_ACCESS_CLIENT_ID:
+        description: Cloudflare Access service token ID, when Portainer sits behind Access.
+        required: false
+      CF_ACCESS_CLIENT_SECRET:
+        description: Cloudflare Access service token secret.
         required: false
     outputs:
       image:
@@ -552,10 +561,31 @@ jobs:
     permissions:
       contents: read
     outputs:
-      deployed: ${{ steps.deploy.outcome == 'success' && (inputs.post-deploy == '' || steps.post.outcome == 'success') }}
+      deployed: ${{ (steps.deploy.outcome == 'success' || steps.portainer.outcome == 'success') && (inputs.post-deploy == '' || steps.post.outcome == 'success') }}
     steps:
+      # A Portainer Git stack whose PORTAINER_* variables are set (on the repository or the deploy
+      # environment) is redeployed by digest; otherwise the webhook is called.
+      - name: Deploy to Portainer
+        id: portainer
+        if: vars.PORTAINER_STACK_ID != ''
+        uses: $/actions/portainer-deploy
+        with:
+          image: ${{ needs.publish.outputs.image }}
+          digest: ${{ needs.publish.outputs.digest }}
+          portainer-url: ${{ vars.PORTAINER_URL }}
+          stack-id: ${{ vars.PORTAINER_STACK_ID }}
+          endpoint-id: ${{ vars.PORTAINER_ENDPOINT_ID }}
+          api-key: ${{ secrets.PORTAINER_API_KEY }}
+          access-client-id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          access-client-secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          image-variable: ${{ vars.IMAGE_VARIABLE }}
+          public-url: ${{ vars.PUBLIC_URL }}
+          health-path: ${{ vars.HEALTH_PATH || '/health/ready' }}
+          health-timeout: ${{ inputs.health-timeout }}
+
       - name: Deploy
         id: deploy
+        if: vars.PORTAINER_STACK_ID == ''
         uses: $/actions/webhook-deploy
         with:
           url: ${{ secrets.DEPLOY_WEBHOOK_URL }}

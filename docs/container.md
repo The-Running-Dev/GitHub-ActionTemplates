@@ -1,7 +1,7 @@
 # container.yml
 
 Builds a container image, starts it and smoke-tests it, then pushes the image that was tested.
-A deploy job can call a redeploy webhook and wait until the site serves the new build.
+A deploy job redeploys a Portainer stack by digest, or calls a redeploy webhook, and waits until the site serves the new build.
 
 | Run | Build and smoke test | Push | Deploy |
 |---|---|---|---|
@@ -14,7 +14,7 @@ A deploy job can call a redeploy webhook and wait until the site serves the new 
 |---|---|
 | `Build` | Checkout, version (when `tags` needs one), `artifact` download, `pre-build`, [`image-meta`](../actions/image-meta/README.md) labels, Buildx build loaded into Docker, [`image-gate`](../actions/image-gate/README.md) start, `smoke-npm-scripts` and `smoke-scripts`, `image-gate` stop, then [`image-archive`](../actions/image-archive/README.md) save and upload of the tested image. |
 | `Publish` | [`branch-tip-gate`](../actions/branch-tip-gate/README.md), `image-meta` tags, `image-archive` load (the image ID must match), registry login, [`image-push`](../actions/image-push/README.md), optional cosign signature, build provenance attestation. |
-| `Deploy` | [`webhook-deploy`](../actions/webhook-deploy/README.md): webhook, then the health URL; then `post-deploy` scripts. |
+| `Deploy` | [`portainer-deploy`](../actions/portainer-deploy/README.md) when the `PORTAINER_STACK_ID` variable is set, else [`webhook-deploy`](../actions/webhook-deploy/README.md): webhook, then the health URL; then `post-deploy` scripts. |
 | `Result` | [`needs-gate`](../actions/needs-gate/README.md): the one check for branch protection to require, `<caller job> / Result`. |
 
 What was smoke-tested is what is pushed: `Publish` loads the saved image and checks its ID
@@ -34,8 +34,13 @@ multi-platform image, so `Publish` rebuilds every platform from the layer cache 
 2. Decide how the container proves it is ready: a `HEALTHCHECK` in the Dockerfile, an HTTP
    `smoke-port`, scripts run inside it (`smoke-exec`), scripts run against it from the runner
    (`smoke-scripts`, `smoke-npm-scripts`), or any mix.
-3. To deploy, store the redeploy webhook (Portainer, Coolify and the like) as the
-   `DEPLOY_WEBHOOK_URL` secret and set `deploy: true` and `health-url`.
+3. To deploy, set `deploy: true` and either:
+   - **Portainer Git stack** (by digest): the variables `PORTAINER_URL`, `PORTAINER_STACK_ID`,
+     `PORTAINER_ENDPOINT_ID`, `PUBLIC_URL`, `IMAGE_VARIABLE` and optionally `HEALTH_PATH` (default
+     `/health/ready`), on the repository or on `deploy-environment`, and the secrets
+     `PORTAINER_API_KEY` and, behind Cloudflare Access, `CF_ACCESS_CLIENT_ID` and
+     `CF_ACCESS_CLIENT_SECRET`. The health path must answer JSON whose `revision` is the commit.
+   - **Webhook** (Portainer, Coolify and the like): the `DEPLOY_WEBHOOK_URL` secret and `health-url`.
 4. Add the workflow ([examples/container.yml](../examples/container.yml)):
 
 ```yaml
@@ -152,7 +157,7 @@ The container log is printed when the container is stopped, pass or fail.
 | `smoke-npm-scripts` | | package.json scripts run against the container, separated by spaces. |
 | `smoke-directory` | `.` | Node project for `smoke-npm-scripts`. |
 | `node-version` | | Node for the smoke and post-deploy scripts. |
-| `deploy` | `false` | After a push, call `DEPLOY_WEBHOOK_URL` and wait for `health-url`. |
+| `deploy` | `false` | After a push, redeploy the Portainer stack (`PORTAINER_*` variables) or call `DEPLOY_WEBHOOK_URL` and wait for `health-url`. |
 | `deploy-environment` | | Environment for `Deploy`. |
 | `deploy-method` | `POST` | Webhook method: `POST`, `GET` or `PUT`. |
 | `health-url` | | URL polled after the webhook. Empty skips the wait. |
@@ -174,6 +179,9 @@ The container log is printed when the container is stopped, pass or fail.
 | `BUILD_SECRETS` | BuildKit secrets, `id=value`, one per line, for `RUN --mount=type=secret`. |
 | `DEPLOY_WEBHOOK_URL` | Redeploy webhook URL. Masked, never printed. |
 | `DEPLOY_TOKEN` | Given to `post-deploy` scripts as `DEPLOY_TOKEN`. |
+| `PORTAINER_API_KEY` | Portainer API key for the Portainer deploy. Masked. |
+| `CF_ACCESS_CLIENT_ID` | Cloudflare Access service token ID, when Portainer sits behind Access. Masked. |
+| `CF_ACCESS_CLIENT_SECRET` | Cloudflare Access service token secret. Masked. |
 
 ## Outputs
 
