@@ -1,0 +1,93 @@
+name: Portainer deploy
+description: Pin a Portainer Git stack's image variable to a digest, redeploy it with a pull, then wait until the site reports the deployed revision.
+author: The-Running-Dev
+
+inputs:
+  image:
+    description: Image repository without a tag, for example `ghcr.io/owner/app`.
+    required: true
+  digest:
+    description: Image digest to deploy (`sha256:` and 64 hex characters). Tags are refused.
+    required: true
+  portainer-url:
+    description: Portainer base URL, for example `https://containers.example.com`. HTTPS only.
+    required: true
+  stack-id:
+    description: Portainer stack ID.
+    required: true
+  endpoint-id:
+    description: Portainer environment (endpoint) ID the stack runs on.
+    required: true
+  api-key:
+    description: Portainer API key. Pass it from a secret; it is masked and never printed.
+    required: true
+  access-client-id:
+    description: Cloudflare Access service token ID, when Portainer sits behind Access. Masked.
+    required: false
+    default: ''
+  access-client-secret:
+    description: Cloudflare Access service token secret. Masked.
+    required: false
+    default: ''
+  image-variable:
+    description: Stack environment variable that holds the image. Only this variable changes.
+    required: true
+  public-url:
+    description: Public base URL of the app, for example `https://app.example.com`.
+    required: true
+  health-path:
+    description: Path on `public-url` that answers JSON with a `revision` field.
+    required: false
+    default: /health/ready
+  revision:
+    description: Revision the health endpoint must report. Defaults to the commit being built.
+    required: false
+    default: ${{ github.sha }}
+  timeout:
+    description: Seconds each request may take.
+    required: false
+    default: '30'
+  redeploy-timeout:
+    description: Seconds the redeploy request may take. Portainer answers after the git pull, the image pull and compose up.
+    required: false
+    default: '600'
+  health-timeout:
+    description: Seconds to wait for the health endpoint to report the revision.
+    required: false
+    default: '300'
+  health-interval:
+    description: Seconds between health checks.
+    required: false
+    default: '10'
+
+outputs:
+  image:
+    description: The deployed image reference, `image@digest`.
+    value: ${{ steps.deploy.outputs.image }}
+  health-url:
+    description: The URL that reported the revision.
+    value: ${{ steps.deploy.outputs.health-url }}
+
+runs:
+  using: composite
+  steps:
+    - id: deploy
+      shell: pwsh
+      env:
+        INPUT_IMAGE: ${{ inputs.image }}
+        INPUT_DIGEST: ${{ inputs.digest }}
+        INPUT_PORTAINER_URL: ${{ inputs.portainer-url }}
+        INPUT_STACK_ID: ${{ inputs.stack-id }}
+        INPUT_ENDPOINT_ID: ${{ inputs.endpoint-id }}
+        INPUT_API_KEY: ${{ inputs.api-key }}
+        INPUT_ACCESS_CLIENT_ID: ${{ inputs.access-client-id }}
+        INPUT_ACCESS_CLIENT_SECRET: ${{ inputs.access-client-secret }}
+        INPUT_IMAGE_VARIABLE: ${{ inputs.image-variable }}
+        INPUT_PUBLIC_URL: ${{ inputs.public-url }}
+        INPUT_HEALTH_PATH: ${{ inputs.health-path }}
+        INPUT_REVISION: ${{ inputs.revision }}
+        INPUT_TIMEOUT: ${{ inputs.timeout }}
+        INPUT_REDEPLOY_TIMEOUT: ${{ inputs.redeploy-timeout }}
+        INPUT_HEALTH_TIMEOUT: ${{ inputs.health-timeout }}
+        INPUT_HEALTH_INTERVAL: ${{ inputs.health-interval }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH portainer-deploy.ps1)'
