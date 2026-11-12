@@ -217,6 +217,18 @@ Describe 'portainer-deploy' {
         $body.env[4].name | Should -Be 'WEB_IMAGE'
         $body.env[4].value | Should -Be "ghcr.io/owner/web@$other"
     }
+    It 'matches stack variables by exact case' {
+        $Fake.State.Stack = '{"Env":[{"name":"app_image","value":"keep"}],"GitConfig":{"ReferenceName":"refs/heads/main"}}'
+
+        $result = Invoke-Deploy $Fake
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $body = (@($Fake.State.Calls.ToArray() | Where-Object Method -EQ 'PUT')[0].Body | ConvertFrom-Json -AsHashtable)
+        $body.env.Count | Should -Be 2
+        $body.env[0].name | Should -BeExactly 'app_image'
+        $body.env[0].value | Should -Be 'keep'
+        $body.env[1].name | Should -BeExactly 'APP_IMAGE'
+    }
     It 'fails when the site never reports the revision' {
         $Fake.State.Revision = 'd' * 40
 

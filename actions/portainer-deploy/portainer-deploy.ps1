@@ -38,7 +38,7 @@ function Test-BaseUrl([string] $Url) { $Url -match '^https://[^/\s]+$' -or $Url 
 
 # One variable per image, in order: the single image/digest/image-variable trio, or `images`
 # (`VARIABLE=repository@sha256:digest`, one per line) for a stack that runs several images.
-$assignments = [ordered]@{}
+$assignments = [System.Collections.Specialized.OrderedDictionary]::new([StringComparer]::Ordinal)
 function Add-Assignment([string] $Variable, [string] $Repository, [string] $Digest) {
     if ($Digest -cnotmatch '^sha256:[a-f0-9]{64}$') { throw "The digest for $Variable must be a sha256 digest (sha256: and 64 hex characters); tags are not deployed." }
     if ($Repository -cnotmatch '^[a-z0-9][a-z0-9._/-]*(:\d+)?(/[a-z0-9._-]+)*$' -or $Repository -match '@') { throw "The image '$Repository' must be a lowercase repository without a tag or digest." }
