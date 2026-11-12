@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-12
+
 ### Added
 - `infra-deploy` action: dispatches the Infra repository's deploy workflow for an app image digest,
   finds the run by a correlation title and mirrors its result.
