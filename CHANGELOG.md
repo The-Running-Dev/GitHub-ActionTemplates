@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-12
+
 ### Added
 - `portainer-deploy` action: pins a Portainer Git stack's image variable to a digest, redeploys
   it with a pull (through Cloudflare Access when configured) and waits until the health endpoint
