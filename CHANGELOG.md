@@ -6,6 +6,9 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `portainer-deploy` takes an `images` input (`VARIABLE=repository@sha256:digest` per line) to pin several image variables of one stack in a single redeploy. `image`, `digest` and `image-variable` still work and are now optional alternatives.
+
 ## [2.1.0] - 2026-11-12
 
 ### Added

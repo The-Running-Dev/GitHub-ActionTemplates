@@ -37,7 +37,7 @@ the one serving. [`container.yml`](../../docs/container.md) runs it in its deplo
 
 | Name | Default | Description |
 |---|---|---|
-| `image` | | Image repository without a tag, for example `ghcr.io/owner/app`. |
+| `image` | | Image repository without a tag, for example `ghcr.io/owner/app`. Needs `digest` and `image-variable`. |
 | `digest` | | Image digest, `sha256:` and 64 hex characters. |
 | `portainer-url` | | Portainer base URL, HTTPS, no path. |
 | `stack-id` | | Portainer stack ID. |
@@ -46,6 +46,7 @@ the one serving. [`container.yml`](../../docs/container.md) runs it in its deplo
 | `access-client-id` | | Cloudflare Access service token ID, when Portainer sits behind Access. |
 | `access-client-secret` | | Cloudflare Access service token secret. Set both or neither. |
 | `image-variable` | | Stack environment variable that holds the image. |
+| `images` | | Several images for one stack, one `VARIABLE=repository@sha256:digest` per line, applied in one redeploy. Use instead of `image`, `digest` and `image-variable`. |
 | `public-url` | | Public base URL of the app, HTTPS, no path. |
 | `health-path` | `/health/ready` | Path on `public-url` that answers JSON with a `revision` field. |
 | `revision` | `github.sha` | Revision the health endpoint must report. |

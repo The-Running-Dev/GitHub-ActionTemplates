@@ -17,6 +17,7 @@ $portainerUrl = (Get-ActionInput 'portainer-url').TrimEnd('/')
 $stackIdText = Get-ActionInput 'stack-id'
 $endpointIdText = Get-ActionInput 'endpoint-id'
 $variable = Get-ActionInput 'image-variable'
+$imagesText = Get-ActionInput 'images'
 $publicUrl = (Get-ActionInput 'public-url').TrimEnd('/')
 $healthPath = Get-ActionInput 'health-path' '/health/ready'
 $revision = (Get-ActionInput 'revision' $env:GITHUB_SHA).ToLowerInvariant()
@@ -35,21 +36,39 @@ $healthInterval = Get-Number 'health-interval' '10' 1
 # Plain HTTP is accepted only for a loopback test server: the API key travels in a header.
 function Test-BaseUrl([string] $Url) { $Url -match '^https://[^/\s]+$' -or $Url -match '^http://(127\.0\.0\.1|localhost)(:\d+)?$' }
 
-if ($digest -cnotmatch '^sha256:[a-f0-9]{64}$') { throw "The digest must be a sha256 digest (sha256: and 64 hex characters); tags are not deployed." }
-if ($image -cnotmatch '^[a-z0-9][a-z0-9._/-]*(:\d+)?(/[a-z0-9._-]+)*$' -or $image -match '@') { throw "The image '$image' must be a lowercase repository without a tag or digest." }
-if (-not $apiKey -or -not $portainerUrl -or -not $stackIdText -or -not $endpointIdText -or -not $variable -or -not $publicUrl) { throw 'Portainer is not configured: set portainer-url, stack-id, endpoint-id, api-key, image-variable and public-url.' }
+# One variable per image, in order: the single image/digest/image-variable trio, or `images`
+# (`VARIABLE=repository@sha256:digest`, one per line) for a stack that runs several images.
+$assignments = [ordered]@{}
+function Add-Assignment([string] $Variable, [string] $Repository, [string] $Digest) {
+    if ($Digest -cnotmatch '^sha256:[a-f0-9]{64}$') { throw "The digest for $Variable must be a sha256 digest (sha256: and 64 hex characters); tags are not deployed." }
+    if ($Repository -cnotmatch '^[a-z0-9][a-z0-9._/-]*(:\d+)?(/[a-z0-9._-]+)*$' -or $Repository -match '@') { throw "The image '$Repository' must be a lowercase repository without a tag or digest." }
+    if ($Variable -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') { throw "The image variable '$Variable' must be an environment variable name." }
+    if ($assignments.Contains($Variable)) { throw "The image variable '$Variable' is listed twice." }
+    $assignments[$Variable] = "$Repository@$Digest"
+}
+if ($imagesText) {
+    if ($image -or $digest -or $variable) { throw 'Set images, or image, digest and image-variable, not both.' }
+    foreach ($line in $imagesText -split '\r?\n') {
+        $entry = $line.Trim()
+        if (-not $entry) { continue }
+        if ($entry -cnotmatch '^([A-Za-z_][A-Za-z0-9_]*)=([^@=\s]+)@(sha256:[a-f0-9]{64})$') { throw "The images line '$entry' must be VARIABLE=repository@sha256:digest." }
+        Add-Assignment $Matches[1] $Matches[2] $Matches[3]
+    }
+    if ($assignments.Count -eq 0) { throw 'The images input has no entries.' }
+}
+elseif ($image -or $digest -or $variable) { Add-Assignment $variable $image $digest }
+else { throw 'Set images, or image, digest and image-variable.' }
+if (-not $apiKey -or -not $portainerUrl -or -not $stackIdText -or -not $endpointIdText -or -not $publicUrl) { throw 'Portainer is not configured: set portainer-url, stack-id, endpoint-id, api-key and public-url.' }
 if (-not (Test-BaseUrl $portainerUrl)) { throw "The portainer-url '$portainerUrl' must be https://host with no path." }
 if ($stackIdText -notmatch '^[1-9]\d*$') { throw "The stack-id '$stackIdText' must be a positive whole number." }
 if ($endpointIdText -notmatch '^[1-9]\d*$') { throw "The endpoint-id '$endpointIdText' must be a positive whole number." }
 if ([bool] $accessId -ne [bool] $accessSecret) { throw 'Set both access-client-id and access-client-secret, or neither.' }
-if ($variable -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') { throw "The image-variable '$variable' must be an environment variable name." }
 if (-not (Test-BaseUrl $publicUrl)) { throw "The public-url '$publicUrl' must be https://host with no path." }
 if ($healthPath -notmatch '^/\S*$') { throw "The health-path '$healthPath' must start with '/'." }
 if ($revision -notmatch '^[0-9a-f]{40}([0-9a-f]{24})?$') { throw "The revision '$revision' must be a full commit SHA." }
 
 $stackId = [int] $stackIdText
 $endpointId = [int] $endpointIdText
-$reference = "$image@$digest"
 $headers = @{ 'X-API-Key' = $apiKey }
 if ($accessId) { $headers['CF-Access-Client-Id'] = $accessId; $headers['CF-Access-Client-Secret'] = $accessSecret }
 
@@ -94,18 +113,18 @@ function Get-Property($Element, [string] $Name) {
 }
 
 $variables = [System.Collections.Generic.List[object]]::new()
-$replaced = $false
+$seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $stackEnv = Get-Property $root 'Env'
 if ($stackEnv) {
     foreach ($item in $stackEnv.EnumerateArray()) {
         $name = (Get-Property $item 'name')?.GetString()
         $valueElement = Get-Property $item 'value'
         $value = if (-not $valueElement) { '' } elseif ($valueElement.ValueKind -eq 'String') { $valueElement.GetString() } else { $valueElement.GetRawText() }
-        if ($name -ceq $variable) { $value = $reference; $replaced = $true }
+        if ($name -and $assignments.Contains($name)) { $value = $assignments[$name]; [void] $seen.Add($name) }
         $variables.Add([ordered]@{ name = $name; value = $value })
     }
 }
-if (-not $replaced) { $variables.Add([ordered]@{ name = $variable; value = $reference }) }
+foreach ($name in $assignments.Keys) { if (-not $seen.Contains($name)) { $variables.Add([ordered]@{ name = $name; value = $assignments[$name] }) } }
 
 $git = Get-Property $root 'GitConfig'
 if (-not $git) { throw "Stack $stackId is not a Git stack, so it cannot be redeployed from the repository." }
@@ -130,7 +149,9 @@ if ($authentication) {
 $document.Dispose()
 
 $body = ConvertTo-Json $payload -Depth 5 -Compress
-Write-Host "Setting $variable to $reference and redeploying stack $stackId with a pull."
+$reference = ($assignments.Values) -join ', '
+foreach ($name in $assignments.Keys) { Write-Host "Setting $name to $($assignments[$name])." }
+Write-Host "Redeploying stack $stackId with a pull."
 Invoke-Portainer PUT "/api/stacks/$stackId/git/redeploy?endpointId=$endpointId" $body "redeploying stack $stackId" $redeployTimeout | Out-Null
 $client.Dispose()
 Write-Host "Portainer redeployed stack $stackId."

@@ -200,6 +200,23 @@ Describe 'portainer-deploy' {
         $body.Keys | Should -Not -Contain 'repositoryUsername'
     }
 
+    It 'pins several images in one redeploy and adds the ones the stack lacks' {
+        $other = "sha256:$('d' * 64)"
+        $images = "APP_IMAGE=$Image@$Digest`r`n
+  WEB_IMAGE=ghcr.io/owner/web@$other  "
+        $result = Invoke-Deploy $Fake @{ INPUT_IMAGE = ''; INPUT_DIGEST = ''; INPUT_IMAGE_VARIABLE = ''; INPUT_IMAGES = $images }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $result.Outputs['image'] | Should -Be "$Image@$Digest, ghcr.io/owner/web@$other"
+        $put = @($Fake.State.Calls.ToArray() | Where-Object Method -EQ 'PUT')
+        $put.Count | Should -Be 1
+        $body = $put[0].Body | ConvertFrom-Json -AsHashtable -DateKind String
+        $body.env.Count | Should -Be 5
+        $body.env[1].value | Should -Be "$Image@$Digest"
+        $body.env[0].value | Should -BeExactly $StartEnv[0].value
+        $body.env[4].name | Should -Be 'WEB_IMAGE'
+        $body.env[4].value | Should -Be "ghcr.io/owner/web@$other"
+    }
     It 'fails when the site never reports the revision' {
         $Fake.State.Revision = 'd' * 40
 
@@ -241,11 +258,15 @@ Describe 'portainer-deploy' {
         @{ Name = 'an uppercase image'; Overrides = @{ INPUT_IMAGE = 'ghcr.io/Owner/app' }; Message = 'without a tag or digest' }
         @{ Name = 'a missing API key'; Overrides = @{ INPUT_API_KEY = '' }; Message = 'Portainer is not configured' }
         @{ Name = 'a missing stack ID'; Overrides = @{ INPUT_STACK_ID = '' }; Message = 'Portainer is not configured' }
-        @{ Name = 'a missing image variable'; Overrides = @{ INPUT_IMAGE_VARIABLE = '' }; Message = 'Portainer is not configured' }
+        @{ Name = 'a missing image variable'; Overrides = @{ INPUT_IMAGE_VARIABLE = '' }; Message = 'must be an environment variable name' }
+        @{ Name = 'no image at all'; Overrides = @{ INPUT_IMAGE = ''; INPUT_DIGEST = ''; INPUT_IMAGE_VARIABLE = '' }; Message = 'Set images, or image, digest and image-variable.' }
+        @{ Name = 'images together with image'; Overrides = @{ INPUT_IMAGES = "A=ghcr.io/owner/a@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }; Message = 'not both' }
+        @{ Name = 'an images line without a digest'; Overrides = @{ INPUT_IMAGE = ''; INPUT_DIGEST = ''; INPUT_IMAGE_VARIABLE = ''; INPUT_IMAGES = 'A=ghcr.io/owner/a:latest' }; Message = 'must be VARIABLE=repository@sha256:digest' }
+        @{ Name = 'an images variable listed twice'; Overrides = @{ INPUT_IMAGE = ''; INPUT_DIGEST = ''; INPUT_IMAGE_VARIABLE = ''; INPUT_IMAGES = "A=ghcr.io/owner/a@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`nA=ghcr.io/owner/b@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }; Message = 'listed twice' }
         @{ Name = 'plain HTTP to a remote Portainer'; Overrides = @{ INPUT_PORTAINER_URL = 'http://portainer.example.test' }; Message = 'must be https://host' }
         @{ Name = 'a Portainer URL with a path'; Overrides = @{ INPUT_PORTAINER_URL = 'https://portainer.example.test/api' }; Message = 'must be https://host' }
         @{ Name = 'half an Access token'; Overrides = @{ INPUT_ACCESS_CLIENT_SECRET = '' }; Message = 'Set both access-client-id and access-client-secret' }
-        @{ Name = 'a bad variable name'; Overrides = @{ INPUT_IMAGE_VARIABLE = 'APP-IMAGE' }; Message = "The image-variable 'APP-IMAGE'" }
+        @{ Name = 'a bad variable name'; Overrides = @{ INPUT_IMAGE_VARIABLE = 'APP-IMAGE' }; Message = "The image variable 'APP-IMAGE'" }
         @{ Name = 'a short revision'; Overrides = @{ INPUT_REVISION = 'abc123' }; Message = "The revision 'abc123'" }
         @{ Name = 'a health path without a slash'; Overrides = @{ INPUT_HEALTH_PATH = 'health' }; Message = "The health-path 'health'" }
         @{ Name = 'a zero health timeout'; Overrides = @{ INPUT_HEALTH_TIMEOUT = '0' }; Message = "The health-timeout '0'" }
