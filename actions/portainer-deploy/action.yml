@@ -4,11 +4,17 @@ author: The-Running-Dev
 
 inputs:
   image:
-    description: Image repository without a tag, for example `ghcr.io/owner/app`.
-    required: true
+    description: Image repository without a tag, for example `ghcr.io/owner/app`. Use with `digest` and `image-variable`, or use `images`.
+    required: false
+    default: ''
   digest:
     description: Image digest to deploy (`sha256:` and 64 hex characters). Tags are refused.
-    required: true
+    required: false
+    default: ''
+  images:
+    description: Several images for one stack, one `VARIABLE=repository@sha256:digest` per line. All are applied in one redeploy. Replaces `image`, `digest` and `image-variable`.
+    required: false
+    default: ''
   portainer-url:
     description: Portainer base URL, for example `https://containers.example.com`. HTTPS only.
     required: true
@@ -31,7 +37,8 @@ inputs:
     default: ''
   image-variable:
     description: Stack environment variable that holds the image. Only this variable changes.
-    required: true
+    required: false
+    default: ''
   public-url:
     description: Public base URL of the app, for example `https://app.example.com`.
     required: true
@@ -62,7 +69,7 @@ inputs:
 
 outputs:
   image:
-    description: The deployed image reference, `image@digest`.
+    description: The deployed image reference, `image@digest`; for `images`, the references joined by a comma and a space.
     value: ${{ steps.deploy.outputs.image }}
   health-url:
     description: The URL that reported the revision.
@@ -83,6 +90,7 @@ runs:
         INPUT_ACCESS_CLIENT_ID: ${{ inputs.access-client-id }}
         INPUT_ACCESS_CLIENT_SECRET: ${{ inputs.access-client-secret }}
         INPUT_IMAGE_VARIABLE: ${{ inputs.image-variable }}
+        INPUT_IMAGES: ${{ inputs.images }}
         INPUT_PUBLIC_URL: ${{ inputs.public-url }}
         INPUT_HEALTH_PATH: ${{ inputs.health-path }}
         INPUT_REVISION: ${{ inputs.revision }}
