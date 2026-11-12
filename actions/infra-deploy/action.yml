@@ -1,0 +1,78 @@
+name: Infra deploy
+description: Ask the Infra repository's deploy workflow to deploy an app image digest, wait for that run and mirror its result.
+author: The-Running-Dev
+
+inputs:
+  app:
+    description: App name the Infra deploy workflow knows, for example `subzerodev-dashboard`.
+    required: true
+  digest:
+    description: Image digest to deploy (`sha256:` and 64 hex characters). Tags are refused.
+    required: true
+  token:
+    description: Token allowed to run workflows (Actions write) on the Infra repository only. Pass it from a secret; it is masked and never printed.
+    required: true
+  revision:
+    description: Commit the image was built from; the Infra workflow checks it against the image and the app's main branch.
+    required: false
+    default: ${{ github.sha }}
+  infra-repository:
+    description: Repository that holds the deploy workflow.
+    required: false
+    default: The-Running-Dev/SubZeroDev.Infra
+  workflow:
+    description: Deploy workflow file in the Infra repository. It must accept the inputs `app`, `digest`, `revision` and `correlation` and set `run-name` to `deploy <app> <correlation>`.
+    required: false
+    default: deploy.yml
+  ref:
+    description: Branch of the Infra repository to run the workflow from.
+    required: false
+    default: main
+  api-url:
+    description: GitHub API base URL. HTTPS only, except a loopback address for tests.
+    required: false
+    default: https://api.github.com
+  timeout:
+    description: Seconds each API request may take.
+    required: false
+    default: '30'
+  find-timeout:
+    description: Seconds to wait for the dispatched run to appear.
+    required: false
+    default: '120'
+  run-timeout:
+    description: Seconds to wait for the Infra run to finish.
+    required: false
+    default: '1800'
+  poll-interval:
+    description: Seconds between checks.
+    required: false
+    default: '5'
+
+outputs:
+  run-url:
+    description: URL of the Infra deploy run.
+    value: ${{ steps.deploy.outputs.run-url }}
+  correlation:
+    description: Identifier that tied the dispatch to its run.
+    value: ${{ steps.deploy.outputs.correlation }}
+
+runs:
+  using: composite
+  steps:
+    - id: deploy
+      shell: pwsh
+      env:
+        INPUT_APP: ${{ inputs.app }}
+        INPUT_DIGEST: ${{ inputs.digest }}
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_REVISION: ${{ inputs.revision }}
+        INPUT_INFRA_REPOSITORY: ${{ inputs.infra-repository }}
+        INPUT_WORKFLOW: ${{ inputs.workflow }}
+        INPUT_REF: ${{ inputs.ref }}
+        INPUT_API_URL: ${{ inputs.api-url }}
+        INPUT_TIMEOUT: ${{ inputs.timeout }}
+        INPUT_FIND_TIMEOUT: ${{ inputs.find-timeout }}
+        INPUT_RUN_TIMEOUT: ${{ inputs.run-timeout }}
+        INPUT_POLL_INTERVAL: ${{ inputs.poll-interval }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH infra-deploy.ps1)'
