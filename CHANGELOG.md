@@ -7,8 +7,12 @@ section for its version.
 ## [Unreleased]
 
 ### Added
+<<<<<<< HEAD
 - `infra-deploy` action: dispatches the Infra repository's deploy workflow for an app image digest,
   finds the run by a correlation title and mirrors its result.
+=======
+- `portainer-deploy` takes an `images` input (`VARIABLE=repository@sha256:digest` per line) to pin several image variables of one stack in a single redeploy. `image`, `digest` and `image-variable` still work and are now optional alternatives.
+>>>>>>> origin/main
 
 ## [2.1.0] - 2026-11-12
 
