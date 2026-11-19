@@ -260,7 +260,7 @@ jobs:
 
       - name: .NET
         if: inputs.dotnet-version != '' || (inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '')
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
           global-json-file: ${{ inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '' && inputs.global-json-file || '' }}
@@ -391,7 +391,7 @@ jobs:
 
       - name: .NET
         if: inputs.dotnet-version != '' || (inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '')
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
           global-json-file: ${{ inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '' && inputs.global-json-file || '' }}
@@ -526,7 +526,7 @@ jobs:
 
       - name: .NET
         if: inputs.dotnet-version != '' || (inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '')
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
           global-json-file: ${{ inputs.global-json-file != '' && hashFiles(inputs.global-json-file) != '' && inputs.global-json-file || '' }}
