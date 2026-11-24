@@ -6,6 +6,11 @@ section for its version.
 
 ## [Unreleased]
 
+### Changed
+- `gates` accepts an expression in a library workflow's runner inputs (`os`, `pack-os`, `runs-on`,
+  `utility-runs-on`), so a caller can pick its runner from a repository variable. Every other input
+  must still be literal.
+
 ## [2.2.0] - 2026-11-12
 
 ### Added
