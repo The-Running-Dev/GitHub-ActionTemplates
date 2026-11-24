@@ -60,4 +60,5 @@ files. Each gate is named `<job> / <what it runs>`.
 Not gates: the syntax check (`pwsh-check`; Pester and the analyzer cover it locally),
 `check-clean` (a working tree with changes in progress fails it), test reports, coverage gates
 and uploads. A library input set with an expression (`${{ ... }}`) cannot be derived and fails
-the check; pass a literal value.
+the check; pass a literal value. The runner inputs (`os`, `pack-os`, `runs-on`,
+`utility-runs-on`) are the exception: no gate reads them, so they may take an expression.
