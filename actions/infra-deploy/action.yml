@@ -7,8 +7,13 @@ inputs:
     description: App name the Infra deploy workflow knows, for example `subzerodev-dashboard`.
     required: true
   digest:
-    description: Image digest to deploy (`sha256:` and 64 hex characters). Tags are refused.
-    required: true
+    description: Image digest to deploy (`sha256:` and 64 hex characters). Tags are refused. Use this or `images`.
+    required: false
+    default: ''
+  images:
+    description: For an app whose stack runs several images, one `repository@sha256:digest` per line, all built from `revision`. The Infra workflow deploys them in one redeploy. Replaces `digest`.
+    required: false
+    default: ''
   token:
     description: Token allowed to run workflows (Actions write) on the Infra repository only. Pass it from a secret; it is masked and never printed.
     required: true
@@ -21,7 +26,7 @@ inputs:
     required: false
     default: The-Running-Dev/SubZeroDev.Infra
   workflow:
-    description: Deploy workflow file in the Infra repository. It must accept the inputs `app`, `digest`, `revision` and `correlation` and set `run-name` to `deploy <app> <correlation>`.
+    description: Deploy workflow file in the Infra repository. It must accept the inputs `app`, `digest` (or `images`), `revision` and `correlation` and set `run-name` to `deploy <app> <correlation>`.
     required: false
     default: deploy.yml
   ref:
@@ -65,6 +70,7 @@ runs:
       env:
         INPUT_APP: ${{ inputs.app }}
         INPUT_DIGEST: ${{ inputs.digest }}
+        INPUT_IMAGES: ${{ inputs.images }}
         INPUT_TOKEN: ${{ inputs.token }}
         INPUT_REVISION: ${{ inputs.revision }}
         INPUT_INFRA_REPOSITORY: ${{ inputs.infra-repository }}

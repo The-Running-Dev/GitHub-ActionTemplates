@@ -22,11 +22,23 @@ deploy:
         token: ${{ secrets.INFRA_DISPATCH_TOKEN }}
 ```
 
-- Dispatches `workflow` on `ref` of `infra-repository` with the inputs `app`, `digest`, `revision`
+- Dispatches `workflow` on `ref` of `infra-repository` with the inputs `app`, `digest` (or `images`), `revision`
   and `correlation`. When the dispatch answer carries a run id it is used; otherwise the run is
   found by its title, so the workflow must set `run-name: deploy <app> <correlation>`.
 - Only a `sha256:` digest is sent. The Infra workflow decides the image repository, stack and
   health URL from its own per-app record, never from the request.
+- For an app whose stack runs several images, pass `images` instead of `digest`: one
+  `repository@sha256:digest` per line, every image built from `revision`. They are sent as the
+  workflow input `images`, separated by spaces, and the Infra workflow checks each repository
+  against its record and pins all of them in one redeploy:
+
+  ```yaml
+  images: |
+    ghcr.io/owner/app-edge@${{ needs.edge.outputs.digest }}
+    ghcr.io/owner/app-service@${{ needs.service.outputs.digest }}
+  ```
+
+  The Infra workflow must accept the `images` input; one that does not answers HTTP 422.
 - The token is masked before anything runs. GitHub errors report the status and a hint only.
 - A run that is still going when `run-timeout` ends fails the step but may still finish: check the
   linked run before dispatching again.
@@ -36,7 +48,8 @@ deploy:
 | Input | Default | Description |
 | --- | --- | --- |
 | `app` | | App name the Infra deploy workflow knows. |
-| `digest` | | Image digest, `sha256:` and 64 hex characters. |
+| `digest` | | Image digest, `sha256:` and 64 hex characters. Set this or `images`. |
+| `images` | | Several images, one `repository@sha256:digest` per line. Set this or `digest`. |
 | `token` | | Token with Actions write on the Infra repository only. |
 | `revision` | `github.sha` | Commit the image was built from. |
 | `infra-repository` | `The-Running-Dev/SubZeroDev.Infra` | Repository that holds the deploy workflow. |
