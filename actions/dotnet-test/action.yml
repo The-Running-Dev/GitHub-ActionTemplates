@@ -47,6 +47,13 @@ inputs:
     description: Folder for the TRX results and coverage, relative to the workspace. It is emptied first.
     required: false
     default: TestResults
+  split-by-platform:
+    description: >-
+      `true` builds and tests only the test projects for this runner's platform: on Windows those
+      with a Windows-only target framework (`net*-windows`, .NET Framework), elsewhere the others.
+      Each project's tests run with `dotnet test`; with none, nothing is built or tested.
+    required: false
+    default: 'false'
 
 outputs:
   results:
@@ -76,6 +83,7 @@ runs:
         INPUT_COVERAGE: ${{ inputs.coverage }}
         INPUT_ENABLE_WINDOWS_TARGETING: ${{ inputs.enable-windows-targeting }}
         INPUT_RESULTS_DIRECTORY: ${{ inputs.results-directory }}
+        INPUT_SPLIT_BY_PLATFORM: ${{ inputs.split-by-platform }}
         DOTNET_CLI_TELEMETRY_OPTOUT: '1'
         DOTNET_NOLOGO: '1'
       run: '& (Join-Path $env:GITHUB_ACTION_PATH dotnet-test.ps1)'

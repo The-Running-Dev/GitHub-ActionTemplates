@@ -15,9 +15,9 @@ $yamlVersion = Get-ActionInput 'yaml-version' '0.4.12'
 # A caller job of one of this library's workflows, by owner/GitHub-ActionTemplates or by the
 # self-repository syntax this repository uses.
 $libraryWorkflow = '^(?:[^/\s]+/GitHub-ActionTemplates|\$)/\.github/workflows/(?<kind>node-ci|pwsh-ci|npm-package|dotnet)\.yml(?:@\S+)?$'
-# Inputs that only choose a runner. No gate reads them, so a caller may set them with an
+# Inputs that only choose a runner (or, for image-os, which runners use the container image). No gate reads them, so a caller may set them with an
 # expression, such as a repository variable that switches between hosted and self-hosted runners.
-$runnerInputs = @('os', 'pack-os', 'runs-on', 'utility-runs-on')
+$runnerInputs = @('os', 'image-os', 'pack-os', 'runs-on', 'utility-runs-on')
 
 $gatesPath = Resolve-WorkspacePath $file $workspace 'file'
 $workflowFolder = Resolve-WorkspacePath $workflows $workspace 'workflows'

@@ -51,6 +51,7 @@ step fails, so the report steps after it see the results.
 | `filter` | | `dotnet test --filter` expression. |
 | `coverage` | `false` | Collect line coverage with coverlet. |
 | `enable-windows-targeting` | `false` | Set `EnableWindowsTargeting`, so Linux and macOS runners can build `net*-windows` projects. |
+| `split-by-platform` | `false` | Build and test only this platform's test projects: on Windows the ones with a Windows-only target framework (`net*-windows`, .NET Framework), elsewhere the rest. The whole solution is still restored. |
 | `results-directory` | `TestResults` | Folder for the results, relative to the workspace. It is emptied first. |
 
 ## Outputs

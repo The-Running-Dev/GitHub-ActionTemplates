@@ -6,6 +6,13 @@ section for its version.
 
 ## [Unreleased]
 
+### Added
+- `dotnet.yml` takes `image-os` and `image`: the `Test` job on the listed Linux runners runs in the
+  BuildAgent image (2.1.0, pinned by digest). `Pack` and publishing still run on the runner.
+- `dotnet.yml` `split-tests-by-platform` and `dotnet-test` `split-by-platform`: Windows runners test
+  only the test projects with a Windows-only target framework, the others test the rest.
+- `gates` accepts an expression in `image-os`, like the other runner inputs.
+
 ## [2.3.0] - 2026-11-25
 
 ### Changed

@@ -116,6 +116,60 @@ Describe 'dotnet-test' {
         $result.Outputs['results'] | Should -Be ''
     }
 
+    It 'builds and tests only the test projects of this platform, split by platform' {
+        $workspace = New-Solution 'split'
+        $projects = [ordered] @{
+            'src/Lib/Lib.csproj'               = @{ IsTestProject = ''; TargetFramework = 'net10.0' }
+            'tests/A.Tests/A.Tests.csproj'     = @{ IsTestProject = 'true'; TargetFramework = 'net10.0' }
+            'tests/W.Tests/W.Tests.csproj'     = @{ IsTestProject = 'true'; TargetFramework = 'net10.0-windows' }
+            'tests/M.Tests/M.Tests.csproj'     = @{ IsTestProject = ''; TargetFrameworks = 'net10.0;net48'; InnerIsTestProject = 'true' }
+        }
+
+        $result = Invoke-Action 'dotnet-test' $workspace @{
+            INPUT_SPLIT_BY_PLATFORM = 'true'; INPUT_FILTER = 'Category!=Slow'; STUB_PROJECTS = ($projects | ConvertTo-Json -Compress)
+        }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $expected = if ($IsWindows) { @('W.Tests', 'M.Tests') } else { @('A.Tests') }
+        $lines = $result.Dotnet.Trim() -split '\r?\n'
+        $lines[0] | Should -Match '^restore .*App\.slnx$'
+        $built = @($lines | Where-Object { $_ -match '^build ' } | ForEach-Object { if ($_ -match '(\w+\.Tests)\.csproj') { $Matches[1] } })
+        $tested = @($lines | Where-Object { $_ -match '^test .* --filter Category!=Slow$' } | ForEach-Object { if ($_ -match '(\w+\.Tests)\.csproj') { $Matches[1] } })
+        $built | Should -Be $expected
+        $tested | Should -Be $expected
+        $lines | Where-Object { $_ -match '^(build|test) .*App\.slnx' } | Should -BeNullOrEmpty
+        $result.Outputs['results'] | Should -Be 'TestResults/*.trx'
+        $result.Outputs['solution'] | Should -Be 'App.slnx'
+        $result.Summary | Should -Match "\($($expected.Count) \w+ test project\(s\)\) \(Release\): passed"
+    }
+
+    It 'fails when any test project fails, split by platform' {
+        $workspace = New-Solution 'splitfail'
+        $projects = @{ 'tests/A.Tests/A.Tests.csproj' = @{ IsTestProject = 'true'; TargetFramework = $(if ($IsWindows) { 'net10.0-windows' } else { 'net10.0' }) } }
+
+        $result = Invoke-Action 'dotnet-test' $workspace @{ INPUT_SPLIT_BY_PLATFORM = 'true'; STUB_PROJECTS = ($projects | ConvertTo-Json -Compress); STUB_TEST_EXIT = '1' }
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Log | Should -Match 'dotnet test failed with exit code 1'
+        $result.Outputs['results'] | Should -Be 'TestResults/*.trx'
+    }
+
+    It 'builds and tests nothing when no test project is for this platform' {
+        $workspace = New-Solution 'splitnone'
+        $projects = @{
+            'src/Lib/Lib.csproj'           = @{ IsTestProject = ''; TargetFramework = 'net10.0' }
+            'tests/X.Tests/X.Tests.csproj' = @{ IsTestProject = 'true'; TargetFramework = $(if ($IsWindows) { 'net10.0' } else { 'net10.0-windows' }) }
+        }
+
+        $result = Invoke-Action 'dotnet-test' $workspace @{ INPUT_SPLIT_BY_PLATFORM = 'true'; STUB_PROJECTS = ($projects | ConvertTo-Json -Compress) }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $result.Dotnet | Should -Not -Match '(?m)^(build|test) '
+        $result.Outputs['results'] | Should -Be ''
+        $result.Outputs['solution'] | Should -Be 'App.slnx'
+        $result.Summary | Should -Match 'nothing was built or tested'
+    }
+
     It 'fails when the folder has several solutions' {
         $workspace = New-Solution 'several'
         Set-File (Join-Path $workspace 'Other.slnx') '<Solution />'

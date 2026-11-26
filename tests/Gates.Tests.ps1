@@ -237,7 +237,7 @@ jobs:
     }
 
     It 'accepts an expression in a runner input' {
-        $workflow = "jobs:`n  dotnet:`n    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/dotnet.yml@v2`n    with:`n      os: `${{ format('[`"{0}`"]', vars.WINDOWS_RUNS_ON || 'windows-latest') }}`n      utility-runs-on: `${{ vars.LINUX_RUNS_ON || 'ubuntu-latest' }}`n      solution: App.slnx"
+        $workflow = "jobs:`n  dotnet:`n    uses: The-Running-Dev/GitHub-ActionTemplates/.github/workflows/dotnet.yml@v2`n    with:`n      os: `${{ format('[`"{0}`"]', vars.WINDOWS_RUNS_ON || 'windows-latest') }}`n      image-os: `${{ format('[`"{0}`"]', vars.LINUX_RUNS_ON || 'ubuntu-latest') }}`n      utility-runs-on: `${{ vars.LINUX_RUNS_ON || 'ubuntu-latest' }}`n      solution: App.slnx"
         $workspace = New-Workspace $workflow
         Set-File (Join-Path $workspace 'App.slnx') '<Solution />'
 

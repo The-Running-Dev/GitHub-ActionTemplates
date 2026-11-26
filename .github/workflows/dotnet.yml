@@ -33,6 +33,22 @@ on:
         description: JSON list of runners to build and test on, for example `'["ubuntu-latest", "windows-latest"]'`.
         type: string
         default: '["ubuntu-latest"]'
+      image-os:
+        description: >-
+          JSON list of the `os` entries whose test job runs in the `image` container, for example
+          `'["ubuntu-latest"]'`. Only Linux runners run containers. Empty runs every entry on the runner.
+        type: string
+        default: '[]'
+      image:
+        description: Container image of the `image-os` test jobs, pinned by digest. The default is the BuildAgent image (.NET SDK and PowerShell).
+        type: string
+        default: ghcr.io/the-running-dev/build-agent:2.1.0@sha256:cc13d62b66fab58e264eb583de5c47eb5f49a3ee8a2cdd48f0de0b1d0ba16556
+      split-tests-by-platform:
+        description: >-
+          Build and test only the test projects for each runner's platform: Windows runners those
+          with a Windows-only target framework (`net*-windows`, .NET Framework), the others the rest.
+        type: boolean
+        default: false
       dotnet-version:
         description: SDK versions for actions/setup-dotnet, one per line (`10.0.x`). Empty uses `global-json-file`, else the SDK on the runner.
         type: string
@@ -236,6 +252,10 @@ jobs:
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # The default image is pinned by digest; a caller that overrides it owns that pin. An empty
+    # image (an entry not in image-os) runs the job on the runner itself.
+    container:
+      image: ${{ contains(fromJSON(inputs.image-os), matrix.os) && inputs.image || '' }} # zizmor: ignore[unpinned-images]
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
@@ -295,6 +315,7 @@ jobs:
           test-args: ${{ inputs.test-args }}
           filter: ${{ inputs.test-filter }}
           coverage: ${{ inputs.coverage }}
+          split-by-platform: ${{ inputs.split-tests-by-platform }}
 
       - name: Test report
         if: ${{ !cancelled() && steps.test.outputs.results != '' }}

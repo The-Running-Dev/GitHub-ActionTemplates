@@ -79,6 +79,30 @@ that grants less fails with `startup_failure`.
 Windows-only solutions (WPF, WinForms) set `os: '["windows-latest"]'`, or keep Linux runners with
 `enable-windows-targeting: true` when the tests do not need Windows.
 
+### BuildAgent image
+
+With `image-os`, the `Test` job on those runners runs in the
+[BuildAgent](https://github.com/The-Running-Dev/BuildAgent) image (`image`, pinned by digest), so
+the .NET SDK and tools come from the image instead of the runner. A job container works only on
+Linux runners; runners not in `image-os` run on the runner itself. `Pack` and the publishing jobs
+always run on the runner.
+
+With `split-tests-by-platform`, each runner builds and tests only its own test projects: Windows
+runners take the projects with a Windows-only target framework (`net*-windows` or .NET Framework),
+the others take the rest. A solution with Windows-only and cross-platform tests then runs the
+cross-platform tests once, in the image, and the Windows tests once, on Windows:
+
+```yaml
+    with:
+      os: ${{ format('["{0}", "{1}"]', vars.LINUX_RUNS_ON || 'ubuntu-latest', vars.WINDOWS_RUNS_ON || 'windows-latest') }}
+      image-os: ${{ format('["{0}"]', vars.LINUX_RUNS_ON || 'ubuntu-latest') }}
+      split-tests-by-platform: true
+      enable-windows-targeting: true
+```
+
+`enable-windows-targeting` lets the solution restore on Linux. A runner with no test project of
+its own builds nothing and reports it in the summary.
+
 To release: set the version, add the CHANGELOG section, merge, then push the tag
 (`git tag v1.2.3 && git push origin v1.2.3`).
 
@@ -91,6 +115,9 @@ To release: set the version, add the CHANGELOG section, merge, then push the tag
 | `build-retention-days` | `1` | Optional package lifetime, 1–90 days. |
 | `handoff-retention-days` | `1` | Required publishing/release package lifetime, 1–90 days; allow for delayed jobs. |
 | `os` | `["ubuntu-latest"]` | JSON list of runners to build and test on. |
+| `image-os` | `[]` | JSON list of the `os` entries whose `Test` job runs in `image`. Linux runners only. |
+| `image` | BuildAgent 2.1.0, by digest | Container image for the `image-os` runners. Pin an override by digest. |
+| `split-tests-by-platform` | `false` | Test only the Windows-only test projects on Windows runners and the others elsewhere. |
 | `dotnet-version` | | SDK versions for actions/setup-dotnet, one per line. Empty uses `global-json-file`, else the SDK on the runner. |
 | `global-json-file` | `global.json` | global.json that pins the SDK, used when it exists. |
 | `working-directory` | `.` | Folder with the solution, relative to the repository root. |

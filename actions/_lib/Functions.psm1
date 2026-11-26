@@ -893,4 +893,21 @@ function Get-ArtifactPolicy {
     }
 }
 
+function Test-WindowsTargetFramework {
+    <#
+    .SYNOPSIS
+    True when a project's target frameworks (`TargetFramework` or a `TargetFrameworks` list) include
+    one that only runs on Windows: an OS-specific `net*-windows` framework or .NET Framework (`net48`).
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([AllowEmptyString()][string] $TargetFrameworks)
+
+    foreach ($framework in $TargetFrameworks.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries)) {
+        $framework = $framework.Trim().ToLowerInvariant()
+        if ($framework -match '^net\d+(\.\d+)?-windows' -or $framework -match '^net\d+$') { return $true }
+    }
+    return $false
+}
+
 Export-ModuleMember -Function *-*
