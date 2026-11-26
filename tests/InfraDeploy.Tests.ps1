@@ -119,6 +119,28 @@ Describe 'infra-deploy' {
         $result.Summary | Should -Match 'my-app'
     }
 
+    It 'sends several images on one line instead of a digest' {
+        $edge = "ghcr.io/owner/app-edge@sha256:$('c' * 64)"
+        $service = "ghcr.io/owner/app-service@sha256:$('d' * 64)"
+
+        $result = Invoke-InfraDeploy $Fake @{ INPUT_DIGEST = ''; INPUT_IMAGES = "$edge`n  $service`n" }
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $sent = @($Fake.State.Calls.ToArray() | Where-Object Method -EQ 'POST')[0].Body | ConvertFrom-Json
+        $sent.inputs.images | Should -BeExactly "$edge $service"
+        $sent.inputs.PSObject.Properties.Name | Should -Not -Contain 'digest'
+        $sent.inputs.app | Should -Be 'my-app'
+        $result.Summary | Should -Match ([regex]::Escape('app-edge'))
+    }
+
+    It 'sends only the digest when images is not set' {
+        $result = Invoke-InfraDeploy $Fake
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $sent = @($Fake.State.Calls.ToArray() | Where-Object Method -EQ 'POST')[0].Body | ConvertFrom-Json
+        $sent.inputs.PSObject.Properties.Name | Should -Not -Contain 'images'
+    }
+
     It 'uses the run id the dispatch returns and skips the search' {
         $Fake.State.DispatchStatus = 200
         $Fake.State.DispatchBody = '{"workflow_run_id":4242}'
@@ -188,6 +210,12 @@ Describe 'infra-deploy' {
     It 'refuses <Name> before calling GitHub' -ForEach @(
         @{ Name = 'a tag as the digest'; Overrides = @{ INPUT_DIGEST = 'latest' }; Message = 'must be a sha256 digest' }
         @{ Name = 'a short digest'; Overrides = @{ INPUT_DIGEST = 'sha256:abc' }; Message = 'must be a sha256 digest' }
+        @{ Name = 'both a digest and images'; Overrides = @{ INPUT_IMAGES = "ghcr.io/owner/app@sha256:$('c' * 64)" }; Message = 'Set digest or images, not both' }
+        @{ Name = 'an image by tag'; Overrides = @{ INPUT_DIGEST = ''; INPUT_IMAGES = 'ghcr.io/owner/app:latest' }; Message = 'must be repository@sha256:digest' }
+        @{ Name = 'an image with a tag and a digest'; Overrides = @{ INPUT_DIGEST = ''; INPUT_IMAGES = "ghcr.io/owner/app:v1@sha256:$('c' * 64)" }; Message = 'must be repository@sha256:digest' }
+        @{ Name = 'an uppercase image'; Overrides = @{ INPUT_DIGEST = ''; INPUT_IMAGES = "ghcr.io/Owner/app@sha256:$('c' * 64)" }; Message = 'must be repository@sha256:digest' }
+        @{ Name = 'an image listed twice'; Overrides = @{ INPUT_DIGEST = ''; INPUT_IMAGES = "ghcr.io/owner/app@sha256:$('c' * 64)`nghcr.io/owner/app@sha256:$('d' * 64)" }; Message = "'ghcr.io/owner/app' is listed twice" }
+        @{ Name = 'blank images and no digest'; Overrides = @{ INPUT_DIGEST = ''; INPUT_IMAGES = "`n  `n" }; Message = 'must be a sha256 digest' }
         @{ Name = 'a missing token'; Overrides = @{ INPUT_TOKEN = '' }; Message = 'The token is not set' }
         @{ Name = 'an uppercase app'; Overrides = @{ INPUT_APP = 'My-App' }; Message = "The app 'My-App'" }
         @{ Name = 'an app with a space'; Overrides = @{ INPUT_APP = 'my app' }; Message = "The app 'my app'" }
