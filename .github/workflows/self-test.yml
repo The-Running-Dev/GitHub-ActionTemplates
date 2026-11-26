@@ -244,6 +244,23 @@ jobs:
       package-artifact-name: ci-nupkg
       publish: false
 
+  # Splits the fixture's tests by platform: Linux runs its net10.0 tests in the BuildAgent image,
+  # Windows its net10.0-windows tests on the runner. Each fails if it runs on the other platform.
+  dotnet-image:
+    name: .NET BuildAgent
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: $/.github/workflows/dotnet.yml
+    with:
+      working-directory: tests/fixtures/dotnet-platforms
+      os: '["ubuntu-latest", "windows-latest"]'
+      image-os: '["ubuntu-latest"]'
+      split-tests-by-platform: true
+      enable-windows-targeting: true
+      artifact-name: split-dotnet
+
   # The NuGet actions that dotnet.yml does not run in the self-test.
   dotnet-actions:
     name: .NET actions (${{ matrix.os }})

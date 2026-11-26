@@ -6,6 +6,8 @@
 # - `pack` writes <name>.<version>.nupkg and .snupkg to --output for each name in STUB_PACKAGES,
 #   with the version from the last -p:Version= (else STUB_PACKAGE_VERSION, else 1.0.0).
 # - `nuget push` exits with STUB_PUSH_EXIT.
+# - `sln list` and `msbuild -getProperty` answer from STUB_PROJECTS, JSON mapping each project path
+#   (relative to the solution) to its properties. `InnerIsTestProject` answers a per-framework call.
 $log = Join-Path $env:STUB_LOG 'dotnet.txt'
 Add-Content -LiteralPath $log -Value ($args -join ' ')
 
@@ -43,5 +45,23 @@ switch ($args[0]) {
         exit 0
     }
     'nuget' { exit [int] "0$env:STUB_PUSH_EXIT" }
+    'sln' {
+        'Project(s)'
+        '----------'
+        ($env:STUB_PROJECTS | ConvertFrom-Json).PSObject.Properties.Name
+        exit 0
+    }
+    'msbuild' {
+        $path = $args[1].Replace([char] 92, [char] '/')
+        $project = ($env:STUB_PROJECTS | ConvertFrom-Json).PSObject.Properties |
+            Where-Object { $path.EndsWith($_.Name) } | Select-Object -First 1 -ExpandProperty Value
+        $names = @($args | Where-Object { $_ -like '-getProperty:*' } | ForEach-Object { $_.Substring(13) })
+        if ($args | Where-Object { $_ -like '-p:TargetFramework=*' }) { "$($project.InnerIsTestProject)"; exit 0 }
+        if ($names.Count -eq 1) { "$($project.($names[0]))"; exit 0 }
+        $properties = [ordered] @{}
+        foreach ($name in $names) { $properties[$name] = "$($project.$name)" }
+        @{ Properties = $properties } | ConvertTo-Json
+        exit 0
+    }
 }
 exit 0

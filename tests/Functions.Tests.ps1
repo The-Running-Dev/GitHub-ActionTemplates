@@ -340,6 +340,22 @@ Describe 'Split-CommandLine' {
     }
 }
 
+Describe 'Test-WindowsTargetFramework' {
+    It 'is <Expected> for <Frameworks>' -ForEach @(
+        @{ Frameworks = 'net10.0'; Expected = $false }
+        @{ Frameworks = 'net10.0-windows'; Expected = $true }
+        @{ Frameworks = 'net10.0-windows10.0.19041.0'; Expected = $true }
+        @{ Frameworks = 'net10.0;net10.0-windows'; Expected = $true }
+        @{ Frameworks = ' net48 ;net10.0'; Expected = $true }
+        @{ Frameworks = 'netstandard2.0;net8.0'; Expected = $false }
+        @{ Frameworks = 'net10.0-browserwasm;net10.0-desktop'; Expected = $false }
+        @{ Frameworks = 'net9.0-android'; Expected = $false }
+        @{ Frameworks = ''; Expected = $false }
+    ) {
+        Test-WindowsTargetFramework $Frameworks | Should -Be $Expected
+    }
+}
+
 Describe 'Find-DotnetProject' {
     BeforeAll {
         $script:Workspace = Join-Path $TestDrive 'dotnet'

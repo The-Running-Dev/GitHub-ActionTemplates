@@ -29,3 +29,16 @@ Describe '.NET optional diagnostic upload contract' {
         $Diagnostics | Should -Match 'actions/upload-artifact@[0-9a-f]{40}'
     }
 }
+
+Describe '.NET BuildAgent image' {
+    It 'runs only the image-os test jobs in the image, pinned by digest, and none by default' {
+        $Workflow | Should -Match "image-os:\s+description:[^\n]*\n(?:\s+[^\n]*\n)*?\s+type: string\s+default: '\[\]'"
+        $Workflow | Should -Match 'image:\s+description:[^\n]+\s+type: string\s+default: ghcr\.io/the-running-dev/build-agent:[^@\s]+@sha256:[0-9a-f]{64}\n'
+        $Workflow | Should -Match "(?m)^    container:\n      image: \$\{\{ contains\(fromJSON\(inputs.image-os\), matrix.os\) && inputs.image \|\| '' \}\}"
+    }
+
+    It 'passes the platform split to dotnet-test, off by default' {
+        $Workflow | Should -Match 'split-tests-by-platform:\s+description:[^\n]*\n(?:\s+[^\n]*\n)*?\s+type: boolean\s+default: false'
+        $Workflow | Should -Match 'split-by-platform: \$\{\{ inputs.split-tests-by-platform \}\}'
+    }
+}
