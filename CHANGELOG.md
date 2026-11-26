@@ -6,6 +6,8 @@ section for its version.
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-11-26
+
 ### Added
 - `dotnet.yml` takes `image-os` and `image`: the `Test` job on the listed Linux runners runs in the
   BuildAgent image (2.1.0, pinned by digest). `Pack` and publishing still run on the runner.
