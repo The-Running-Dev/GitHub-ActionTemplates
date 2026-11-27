@@ -62,7 +62,8 @@ $handler.AllowAutoRedirect = $false
 $client = [System.Net.Http.HttpClient]::new($handler)
 $client.Timeout = [System.Threading.Timeout]::InfiniteTimeSpan
 
-function Invoke-GitHub([string] $Method, [string] $Path, [string] $Body, [string] $What) {
+# A status listed in -Tolerate is returned to the caller instead of thrown.
+function Invoke-GitHub([string] $Method, [string] $Path, [string] $Body, [string] $What, [int[]] $Tolerate = @()) {
     $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::new($Method), "$apiUrl$Path")
     [void] $request.Headers.TryAddWithoutValidation('Authorization', "Bearer $token")
     [void] $request.Headers.TryAddWithoutValidation('Accept', 'application/vnd.github+json')
@@ -79,7 +80,7 @@ function Invoke-GitHub([string] $Method, [string] $Path, [string] $Body, [string
     $code = [int] $response.StatusCode
     $text = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
     $response.Dispose()
-    if ($code -lt 200 -or $code -ge 300) {
+    if (($code -lt 200 -or $code -ge 300) -and $code -notin $Tolerate) {
         $hint = switch ($code) {
             401 { ' The token is not accepted.' }
             403 { ' The token may lack Actions write on the Infra repository.' }
@@ -128,9 +129,17 @@ $runUrl = "https://github.com/$repository/actions/runs/$runId"
 Set-ActionOutput 'run-url' $runUrl
 Write-Host "Infra run: $runUrl"
 
+# A run id the dispatch has just returned can answer 404 for a moment before GitHub serves the run,
+# so a 404 is waited out for up to find-timeout and is fatal only after that.
 $watch.Restart()
 while ($true) {
-    $run = (Invoke-GitHub GET "/repos/$repository/actions/runs/$runId" '' 'reading the deploy run').Text | ConvertFrom-Json
+    $read = Invoke-GitHub GET "/repos/$repository/actions/runs/$runId" '' 'reading the deploy run' -Tolerate 404
+    if ($read.Code -eq 404) {
+        if ($watch.Elapsed.TotalSeconds -ge $findTimeout) { throw "GitHub answered HTTP 404 for $findTimeout s while reading the deploy run $runUrl. The run was not found, or the token cannot see it." }
+        Start-Sleep -Seconds $interval
+        continue
+    }
+    $run = $read.Text | ConvertFrom-Json
     if ($run.status -eq 'completed') { break }
     if ($watch.Elapsed.TotalSeconds -ge $runTimeout) { throw "The Infra run did not finish within $runTimeout s; it may still be deploying, so check $runUrl before running again." }
     Start-Sleep -Seconds $interval
