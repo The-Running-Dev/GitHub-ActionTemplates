@@ -57,7 +57,7 @@ deploy:
 | `ref` | `main` | Branch the workflow runs from. |
 | `api-url` | `https://api.github.com` | GitHub API base URL (HTTPS, or loopback for tests). |
 | `timeout` | `30` | Seconds each API request may take. |
-| `find-timeout` | `120` | Seconds to wait for the run to appear. |
+| `find-timeout` | `120` | Seconds to wait for the run to appear, and to be readable once its id is known. |
 | `run-timeout` | `1800` | Seconds to wait for the run to finish. |
 | `poll-interval` | `5` | Seconds between checks. |
 

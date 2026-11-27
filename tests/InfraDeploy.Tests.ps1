@@ -16,6 +16,7 @@ BeforeAll {
                 Calls = [System.Collections.Concurrent.ConcurrentQueue[object]]::new()
                 DispatchStatus = 204; DispatchBody = ''; Correlation = ''; App = ''
                 Appear = $true; Conclusion = 'success'; PollsBeforeDone = 1; Polls = 0
+                RunMissingReads = 0; Reads = 0
             })
         $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
         $listener.Start()
@@ -56,6 +57,8 @@ BeforeAll {
                             200, (ConvertTo-Json @{ workflow_runs = $runs } -Depth 4 -Compress)
                         }
                         '^GET /repos/owner/infra/actions/runs/4242$' {
+                            $state.Reads++
+                            if ($state.Reads -le $state.RunMissingReads) { 404, '{"message":"Not Found"}'; break }
                             $state.Polls++
                             $done = $state.Polls -ge $state.PollsBeforeDone
                             $status = if ($done) { 'completed' } else { 'in_progress' }
@@ -149,6 +152,30 @@ Describe 'infra-deploy' {
 
         $result.ExitCode | Should -Be 0 -Because $result.Log
         @($Fake.State.Calls.ToArray() | Where-Object { $_.Path -match '/runs\?' }).Count | Should -Be 0
+    }
+
+    It 'waits out a 404 on a run id the dispatch has just returned' {
+        $Fake.State.DispatchStatus = 200
+        $Fake.State.DispatchBody = '{"workflow_run_id":4242}'
+        $Fake.State.RunMissingReads = 2
+
+        $result = Invoke-InfraDeploy $Fake
+
+        $result.ExitCode | Should -Be 0 -Because $result.Log
+        $Fake.State.Reads | Should -Be 3
+        $result.Outputs['run-url'] | Should -Be 'https://github.com/owner/infra/actions/runs/4242'
+    }
+
+    It 'fails when the run still answers 404 after find-timeout' {
+        $Fake.State.DispatchStatus = 200
+        $Fake.State.DispatchBody = '{"workflow_run_id":4242}'
+        $Fake.State.RunMissingReads = 1000
+
+        $result = Invoke-InfraDeploy $Fake
+
+        $result.ExitCode | Should -Not -Be 0
+        Get-Flat $result.Log | Should -Match 'HTTP 404 for 2 s while reading the deploy run'
+        Get-Flat $result.Log | Should -Match ([regex]::Escape('https://github.com/owner/infra/actions/runs/4242'))
     }
 
     It 'waits until the run is completed' {

@@ -6,6 +6,11 @@ section for its version.
 
 ## [Unreleased]
 
+### Fixed
+- `infra-deploy` waits out a 404 on the deploy run for up to `find-timeout` instead of failing at
+  once. A run id the dispatch has just returned can answer 404 for a moment before GitHub serves it,
+  which failed a deploy that went on to succeed.
+
 ## [2.4.0] - 2026-11-26
 
 ### Added
